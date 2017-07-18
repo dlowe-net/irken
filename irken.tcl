@@ -153,12 +153,26 @@ proc handlePART {serverid msg} {
         texttochan $chanid "[dict get $msg src] has left $chan\n" italic
     }
 }
+proc handle331 {serverid msg} {
+    # Channel title
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    texttochan $chanid "\t*\tNo channel topic set.\n" italic
+}
+proc handle332 {serverid msg} {
+    # Channel title
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    texttochan $chanid "\t*\tChannel topic: [dict get $msg trailing]\n" italic
+}
 proc handle376 {serverid msg} {
     # End of MOTD
     foreach chan [dict get $::config $serverid -autojoin] {
         newchan [chanid $serverid $chan] disabled
         send $serverid "JOIN $chan"
     }
+}
+proc handleTOPIC {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    texttochan $chanid "\t*\t[dict get $msg src] sets title to [dict get $msg trailing]\n" italic
 }
 proc handlePRIVMSG {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
@@ -196,6 +210,10 @@ proc recv {fd} {
     }
     if {$trailing ne ""} {
         lappend args $trailing
+    }
+    if {[regexp {^\d+$} $cmd]} {
+        # Numeric responses specify a useless target afterwards
+        set args [lrange $args 1 end]
     }
     set msg [dict create src $src user $user host $host cmd $cmd args $args trailing $trailing]
     set p [info procs handle$cmd]
