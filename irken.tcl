@@ -1,76 +1,99 @@
+#!/usr/bin/wish8.6
+# Irken - dlowe@dlowe.net
+#
+# Before running, sudo apt install tcl-tls for SSL support.
+#
 package require Tk
 package require tls
+# A chanid is $serverid for the server channel, $serverid/$channel for channel display.
+proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return $serverid/$chan} }
+proc serverpart {chanid} {lindex [split $chanid {/}] 0}
+proc channelpart {chanid} {lindex [split $chanid {/}] 1}
+
 # ::config is a dict keyed on serverid containing config for each server
-set ::config [dict create "Freenode" {-host chat.freenode.net -port 6697 -ssl true -nick dlowe_ -user dlowe -autojoin {\#tcl}}]
+set ::config [dict create "Freenode" [list -host chat.freenode.net -port 6697 -ssl true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}]]
 # ::servers is a dict keyed on fd containing the serverid
 set ::servers {}
 # ::fds is a dict keyed on serverid containing the fd
 set ::fds {}
-# ::channels is a dict keyed on {serverid channel} containing channel text with tags
+# ::channels is a dict keyed on {chanid channel} containing channel text with tags
 set ::channels {}
-# ::active is the shown channel.  $serverid for the server channel, # $serverid/$channel for channel display.
+# ::active is the chanid of the shown channel.
 set ::active {}
 
 # interface setup
+proc icon {path} { return [image create photo -format png -data [exec -- convert -geometry 16x16 $path "png:-" | base64]] }
+set font "Monospace 10"
 ttk::treeview .nav -show tree -selectmode browse
-.nav tag config server -font "Monospace 12"
-.nav tag bind server <ButtonRelease> {clickchan %x %y}
-.nav tag config dcserver -font "Monospace 12" -foreground gray
-.nav tag bind dcserver <ButtonRelease> {clickchan %x %y}
-.nav tag config channel -font "Monospace 12"
-.nav tag bind channel <ButtonRelease> {clickchan %x %y}
-.nav tag config dcchannel -font "Monospace 12" -foreground gray
-.nav tag bind dcchannel <ButtonRelease> {clickchan %x %y}
-.nav tag config direct -font "Monospace 12"
-text .t -height 30 -wrap word -font {Monospace 9}
-.t tag config bold   -font [linsert [.t cget -font] end bold]
-.t tag config italic -font [linsert [.t cget -font] end italic]
+bind .nav <<TreeviewSelect>> selectchan
+.nav tag config server -font $font -image [icon "/usr/share/evolution/3.10/icons/hicolor/48x48/categories/preferences-system-network-proxy.png"]
+.nav tag config channel -font $font -image [icon "/usr/share/evolution/3.10/icons/hicolor/48x48/actions/stock_people.png"]
+.nav tag config direct -font $font -image [icon "/usr/share/seahorse/icons/hicolor/48x48/apps/seahorse-person.png"]
+.nav tag config disabled -foreground gray
+.nav tag config unread -foreground orange
+text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [font measure $font 0]}] right [expr {14 * [font measure $font 0]}] left"
+.t tag config bold   -font "$font bold"
+.t tag config italic -font "$font italic"
 .t tag config blue   -foreground blue
 .t tag config green  -foreground green
-.t tag config warning  -foreground red -font [linsert [.t cget -font] end italic]
+.t tag config warning  -foreground red -font "$font italic"
 entry .cmd
 pack .nav -side left -fill y
 pack .cmd -side bottom -fill x
 pack .t -fill both -expand 1
-bind .cmd <Return> handlereturn
+bind .cmd <Return> returnkey
 
-proc texttochan {chan text args} {
-    dict lappend ::channels $chan [concat [list $text] $args]
-    if {$chan ne $::active} {
+proc texttochan {chanid text args} {
+    dict lappend ::channels $chanid [concat [list $text] $args]
+    if {$chanid ne $::active} {
+        .nav tag add unread $chanid
         return
     }
-    set atbottom 0
-    if {[lindex [.t yview] 0] eq 1.0} {
-        set atbottom 1
-    }
+    set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
+    .t configure -state normal
     .t insert end $text $args
-    if {$atbottom == 0} {
+    if {$atbottom} {
         .t yview end
     }
+    .t configure -state disabled
 }
 
-proc clickchan {x y} {
-    set chanid [.nav identify item $x $y]
+proc selectchan {} {
+    set chanid [.nav selection]
     if {$chanid eq $::active} {
         return
     }
+    .nav tag remove unread $chanid
     set ::active $chanid
+    .t configure -state normal
     .t delete 1.0 end
     if [dict exists $::channels $chanid] {
         foreach texttag [dict get $::channels $chanid] {
-            puts stdout $texttag
             .t insert end [lindex $texttag 0] [lindex $texttag 1]
         }
         .t yview end
     }
+    .t configure -state disabled
+    wm title . "Irken - $::active"
+}
+
+proc newchan {chanid tags} {
+    set name [channelpart $chanid]
+    set tag {channel}
+    if {$name eq ""} {
+        set name [serverpart $chanid]
+        set tag {server}
+    } elseif {[string range $name 0 0] ne "#"} {
+        set tag {direct}
+    }
+    dict set ::channels $chanid {}
+    .nav insert [serverpart $chanid] end -id $chanid -text $name -tag [concat $tag $tags]
 }
 
 proc connect {serverid} {
-    .nav tag remove dcserver $serverid
-    .nav tag add server $serverid
-    texttochan $serverid "Connecting to $serverid...\n"
     set host [dict get $::config $serverid -host]
     set port [dict get $::config $serverid -port]
+    texttochan $serverid "Connecting to $serverid ($host:$port)...\n" italic
     if [dict get $::config $serverid -ssl] {
         set fd [tls::socket $host $port]
     } else {
@@ -83,22 +106,86 @@ proc connect {serverid} {
     
 }
 
-proc send {serverid str} {
-    set fd [dict get $::fds $serverid]
-    puts $fd $str
-    flush $fd
-}
+proc send {serverid str} {set fd [dict get $::fds $serverid]; puts $fd $str; flush $fd}
 
 proc connected {fd} {
     fileevent $fd writable {}
     set serverid [dict get $::servers $fd]
-    texttochan $serverid "Connected.\n"
+    .nav tag remove disabled $serverid
+    texttochan $serverid "Connected.\n" italic
     send $serverid "NICK [dict get $::config $serverid -nick]"
     send $serverid "USER [dict get $::config $serverid -user] 0 * :Irken user"
 }
 
+proc disconnected {fd} {
+    set serverid [dict get $::servers $fd]
+    fileevent $fd writable {}
+    fileevent $fd readable {}
+    
+    .nav tag add disabled $serverid
+    texttochan $serverid "Disconnected.\n" italic
+}
+
+proc handlePING {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
+proc handleJOIN {serverid msg} {
+    set chan [lindex [dict get $msg args] 0]
+    set chanid [chanid $serverid $chan]
+    if {[dict get $::config $serverid -nick] eq [dict get $msg src]} {
+        # I joined
+        if [dict exists $::channels $chanid] {
+            .nav tag remove disabled $chanid
+        } else {
+            newchan $chanid {}
+        }
+    } else {
+        # Someone else joined
+        texttochan $chanid "[dict get $msg src] has joined $chan\n" italic
+    }
+}
+proc handlePART {serverid msg} {
+    set chan [lindex [dict get $msg args] 0]
+    set chanid [chanid $serverid $chan]
+    if {[dict get $::config $serverid -nick] eq [dict get $msg src]} {
+        # I parted
+        .nav tag add disabled $chanid
+    } else {
+        # Someone else parted
+        texttochan $chanid "[dict get $msg src] has left $chan\n" italic
+    }
+}
+proc handle376 {serverid msg} {
+    # End of MOTD
+    foreach chan [dict get $::config $serverid -autojoin] {
+        send $serverid "JOIN $chan"
+    }
+}
+proc handlePRIVMSG {serverid msg} {
+    set chan [lindex [dict get $msg args] 0]
+    if {$chan eq [dict get $::config $serverid -nick]} {
+        # direct message - so chan is source, not target
+        set chan [dict get $msg src]
+    }
+    set text [dict get $msg trailing]
+    set chanid [chanid $serverid $chan]
+    if {! [dict exists $::channels $chanid]} {
+        newchan $chanid {}
+    }
+    set tag ""
+    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag green}
+    if [regexp {^\001ACTION (.+)\001} $text -> text] {
+        texttochan $chanid "\t*\t[dict get $msg src] " bold $tag
+        texttochan $chanid "$text\n" $tag
+    } else {
+        texttochan $chanid "\t[dict get $msg src]\t" bold $tag
+        texttochan $chanid "$text\n" $tag
+    }
+}
+
 proc recv {fd} {
-    if [eof $fd] {exit 0}
+    if [eof $fd] {
+        disconnected $fd
+        return
+    }
     gets $fd line
     set serverid [dict get $::servers $fd]
     set line [string trimright $line]
@@ -109,47 +196,17 @@ proc recv {fd} {
     if {$trailing ne ""} {
         lappend args $trailing
     }
-    # .t insert end "src:$src user:$user host:$host cmd:$cmd args:$args\n"
-    if {$cmd eq "PING"} {
-        # Handle PING messages from server
-        send $serverid "PONG :$args"
-        return
-    }
-    if {$cmd eq "376"} {
-        # End of MOTD
-        foreach chan [dict get $::config $serverid -autojoin] {
-            send $serverid "JOIN $chan"
-        }
-    }
-    if {$cmd eq "JOIN"} {
-        set chan $serverid/$trailing
-        dict append $::channels $chan {}
-        .nav insert $serverid end -id $chan -text $trailing -tag channel
-    }
-    if {$cmd eq "PRIVMSG"} {
-        set target [lindex $args 0]
-        set msg [lindex $args 1]
-        set tag ""
-        # if [regexp $::me $msg] {set tag green}
-        if [regexp {^\001ACTION (.+)\001} $msg -> msg] {
-            texttochan $serverid/$target "$src:$target $msg\n" italic
-        } else {
-            texttochan $serverid/$target <$src:$target>\t bold
-            texttochan $serverid/$target $msg\n $tag
-        }
+    set msg [dict create src $src user $user host $host cmd $cmd args $args trailing $trailing]
+    set p [info procs handle$cmd]
+    if {$p ne ""} {
+        {*}$p $serverid $msg
     } else {
-        texttochan $serverid $line\n italic
+        texttochan $serverid $line\n
     }
 }
-proc in {list element} {expr {[lsearch -exact $list $element]>=0}}
-proc serverpart {channel} {
-    lindex [split $channel {/}] 0
-}
-proc channelpart {channel} {
-    lindex [split $channel {/}] 1
-}
-proc performcmd {cmd arg} {
-    if {$cmd eq "server"} {
+
+proc docmd {cmd arg} {
+    if {$cmd eq "SERVER"} {
         if {! [dict exists $::config $arg]} {
             texttochan $::active "$arg is not a server.\n" {} $::config
             return
@@ -157,16 +214,23 @@ proc performcmd {cmd arg} {
         connect $arg
         return
     }
-    
-    if {! [dict exists $::fds [serverpart $::active]]} {
+
+    set serverid [serverpart $::active]
+    if {! [dict exists $::fds $serverid]} {
         texttochan $::active "Server is disconnected.\n"
         return
     }
-    if {$cmd eq "me"}  {
+    if {$cmd eq "ME"}  {
         performsend "\001ACTION $arg\001"
-    } elseif {$cmd eq "join"} {
-        set ::chan $arg
-        send $serverid "$arg"
+    } elseif {$cmd eq "JOIN"} {
+        set chanid [chanid $serverid $arg]
+        set ::active $chanid
+        if {! [dict exists $::channels $chanid]} {
+            newchan $chanid disabled
+        }
+        .nav selection set $chanid
+        selectchan
+        send $serverid "JOIN :$arg"
         return
     } else {
         send $serverid "$cmd $arg"
@@ -174,7 +238,7 @@ proc performcmd {cmd arg} {
     }
 }
 
-proc performsend {msg} {
+proc sendmsg {text} {
     set chan [channelpart $::active]
     if {$chan eq {}} {
         texttochan $::active "No channel joined.  Try /join #channel\n"
@@ -185,30 +249,42 @@ proc performsend {msg} {
         texttochan $::active "Server is disconnected.\n"
         return
     }
-    foreach line [split $msg \n] {send $serverid "PRIVMSG $chan :$line"}
-    set tag ""
-    
-    if [regexp {\001ACTION(.+)\001} $msg -> msg] {set tag italic}
-    texttochan $::active <me:$chan>\t {bold blue}
-    texttochan $::active $msg\n [list blue $tag]
+    foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
+    set tag {blue}
+    if [regexp {^\001ACTION (.+)\001} $text -> text] {
+        texttochan $::active "\t*\t[dict get $::config $serverid -nick] " bold $tag
+        texttochan $::active "$text\n" $tag
+    } else {
+        texttochan $::active "\t[dict get $::config $serverid -nick]\t" bold $tag
+        texttochan $::active "$text\n" $tag
+    }
     .t yview end
 }
 
-proc handlereturn {} {
+proc returnkey {} {
     set msg [.cmd get]
-    if [regexp {^/(\S+)\s*(\S*)} $msg -> cmd msg] {
-        performcmd $cmd $msg
+    if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
+        docmd [string toupper $cmd] $msg
     } else {
-        performsend $msg
+        sendmsg $msg
     }
     .cmd delete 0 end
 }
 
 # initialize
 dict for {serverid serverconf} $::config {
-    .nav insert {} end -id $serverid -text $serverid -open true -tag dcserver
-    .nav selection set $serverid
-    set ::active $serverid
+    .nav insert {} end -id $serverid -text $serverid -open true -tag {server disabled}
 }
+# select first serverid by default
+.nav selection set [lindex $::config 0]
+selectchan
+
+# quick restart
 bind . <Escape> {exec wish $argv0 &; exit}
-connect "Freenode"
+
+# autoconnect to servers
+dict for {serverid serverconf} $::config {
+    if {[dict get $serverconf -autoconnect]} {
+        connect $serverid
+    }
+}
