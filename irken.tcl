@@ -195,6 +195,9 @@ proc handlePRIVMSG {serverid msg} {
         texttochan $chanid "$text\n" $tag
     }
 }
+proc handleNOTICE {serverid msg} {
+    handlePRIVMSG $serverid $msg
+}
 
 proc recv {fd} {
     if [eof $fd] {
