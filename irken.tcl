@@ -156,6 +156,7 @@ proc handlePART {serverid msg} {
 proc handle376 {serverid msg} {
     # End of MOTD
     foreach chan [dict get $::config $serverid -autojoin] {
+        newchan [chanid $serverid $chan] disabled
         send $serverid "JOIN $chan"
     }
 }
