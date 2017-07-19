@@ -1,10 +1,14 @@
 #!/usr/bin/wish8.6
 # Irken - dlowe@dlowe.net
-#
-# Before running, sudo apt install tcl-tls for SSL support.
-#
-package require Tk
-package require tls
+if {[catch {package require Tk} cerr]} {
+    puts "Could not load Tk.  Please run: sudo apt install tcl-tk tcl-tls"
+    exit 1
+}
+if {[catch {package require tls} cerr]} {
+    puts "Could not load TLS library.  Please run: sudo apt install tcl-tls"
+    exit 1
+}
+
 # A chanid is $serverid for the server channel, $serverid/$channel for channel display.
 proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return $serverid/$chan} }
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
