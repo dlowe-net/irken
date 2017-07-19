@@ -14,8 +14,20 @@ proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return $serve
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
 
-# ::config is a dict keyed on serverid containing config for each server
-set ::config [dict create "Freenode" [list -host chat.freenode.net -port 6697 -ssl true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}]]
+# ::config is a dict keyed on serverid containing config for each server, loaded from a file.
+set ::config {}
+set configpath $::env(HOME)/.irken
+proc server {serverid args}  {dict set ::config $serverid $args}
+if {! [file exists $configpath]} {
+    if {[catch {open $configpath w} fp]} {
+        puts "Couldn't write default config.  Exiting."
+        exit 1
+    }
+    puts $fp {server "Freenode" -host chat.freenode.net -port 6667 -ssl false -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
+    close $fp
+}
+source $configpath
+
 # ::servers is a dict keyed on fd containing the serverid
 set ::servers {}
 # ::fds is a dict keyed on serverid containing the fd
