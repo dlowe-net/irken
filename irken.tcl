@@ -227,33 +227,37 @@ proc recv {fd} {
     }
 }
 
-proc docmd {cmd arg} {
-    if {$cmd eq "SERVER"} {
-        if {! [dict exists $::config $arg]} {
-            texttochan $::active "$arg is not a server.\n" {} $::config
-            return
-        }
-        connect $arg
+proc cmdSERVER {serverid arg} {
+    if {! [dict exists $::config $arg]} {
+        texttochan $::active "$arg is not a server.\n" {} $::config
         return
     }
+    connect $arg
+}
+proc cmdME {serverid arg} { sendmsg "\001ACTION $arg\001" }
+proc cmdJOIN {serverid arg} {
+    set chanid [chanid $serverid $arg]
+    if {! [dict exists $::channels $chanid]} {
+        newchan $chanid disabled
+    }
+    .nav selection set $chanid
+    selectchan
+    send $serverid "JOIN :$arg"
+}
+proc cmdEVAL {serverid arg} {
+    texttochan $::active "$arg -> [eval $arg]\n" italic
+}
 
+proc docmd {cmd arg} {
     set serverid [serverpart $::active]
     if {! [dict exists $::fds $serverid]} {
         texttochan $::active "Server is disconnected.\n"
         return
     }
-    if {$cmd eq "ME"}  {
-        performsend "\001ACTION $arg\001"
-    } elseif {$cmd eq "JOIN"} {
-        set chanid [chanid $serverid $arg]
-        set ::active $chanid
-        if {! [dict exists $::channels $chanid]} {
-            newchan $chanid disabled
-        }
-        .nav selection set $chanid
-        selectchan
-        send $serverid "JOIN :$arg"
-        return
+
+    set p [info procs "cmd[string toupper $cmd]"]
+    if {$p ne ""} {
+        {*}$p $serverid $arg
     } else {
         send $serverid "$cmd $arg"
         return
