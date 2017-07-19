@@ -78,16 +78,23 @@ proc selectchan {} {
 }
 
 proc newchan {chanid tags} {
+    set serverid [serverpart $chanid]
     set name [channelpart $chanid]
     set tag {channel}
     if {$name eq ""} {
-        set name [serverpart $chanid]
+        set name $serverid
         set tag {server}
     } elseif {[string range $name 0 0] ne "#"} {
         set tag {direct}
     }
     dict set ::channels $chanid {}
-    .nav insert [serverpart $chanid] end -id $chanid -text $name -tag [concat $tag $tags]
+    .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+    set items [lsort [.nav children $serverid]]
+    .nav detach $items
+    set count [llength $items]
+    for {set i 0} {$i < $count} {incr i} {
+        .nav move [lindex $items $i] $serverid $i
+    }
 }
 
 proc connect {serverid} {
