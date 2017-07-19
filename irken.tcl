@@ -84,7 +84,7 @@ proc newchan {chanid tags} {
     if {$name eq ""} {
         set name $serverid
         set tag {server}
-    } elseif {[string range $name 0 0] ne "#"} {
+    } elseif {[lsearch -exact "# &" [string range $name 0 0]] == -1} {
         set tag {direct}
     }
     dict set ::channels $chanid {}
