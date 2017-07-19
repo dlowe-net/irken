@@ -149,6 +149,9 @@ proc handleJOIN {serverid msg} {
         texttochan $chanid "[dict get $msg src] has joined $chan\n" italic
     }
 }
+proc handleQUIT {serverid msg} {
+    texttochan $serverid "[dict get $msg src] has quit.\n" italic
+}
 proc handlePART {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
