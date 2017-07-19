@@ -175,7 +175,11 @@ proc handle331 {serverid msg} {
 proc handle332 {serverid msg} {
     # Channel title
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-    texttochan $chanid "\t*\tChannel topic: [dict get $msg trailing]\n" italic
+    if {[dict get $msg trailing] ne ""} {
+        texttochan $chanid "\t*\tChannel topic: [dict get $msg trailing]\n" italic
+    } else {
+        texttochan $chanid "\t*\tNo channel topic set.\n" italic
+    }
 }
 proc handle376 {serverid msg} {
     # End of MOTD
