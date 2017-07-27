@@ -40,6 +40,9 @@ set ::active {}
 # interface setup
 proc icon {path} { return [image create photo -format png -data [exec -- convert -geometry 16x16 $path "png:-" | base64]] }
 set font "Monospace 10"
+ttk::panedwindow .root -orient horizontal
+.root add [ttk::frame .navframe -width 100]
+.root add [ttk::frame .main -width 300 -height 300]
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
 .nav tag config server -font $font -image [icon "/usr/share/evolution/3.10/icons/hicolor/48x48/categories/preferences-system-network-proxy.png"]
@@ -54,10 +57,11 @@ text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [fo
 .t tag config green  -foreground green
 .t tag config warning  -foreground red -font "$font italic"
 entry .cmd
-pack .nav -side left -fill y
-pack .cmd -side bottom -fill x
-pack .t -fill both -expand 1
 bind .cmd <Return> returnkey
+pack .nav -in .navframe -fill both -expand 1
+pack .cmd -in .main -side bottom -fill x
+pack .t -in .main -fill both -expand 1
+pack .root -fill both -expand 1
 
 proc texttochan {chanid text args} {
     dict lappend ::channels $chanid [concat [list $text] $args]
