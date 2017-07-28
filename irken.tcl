@@ -386,13 +386,7 @@ proc cmdEVAL {serverid arg} {
     addchantext $::active "$arg -> [eval $arg]\n" italic
 }
 
-proc docmd {cmd arg} {
-    set serverid [serverpart $::active]
-    if {! [dict exists $::fds $serverid]} {
-        addchantext $::active "Server is disconnected.\n"
-        return
-    }
-
+proc docmd {serverid chan cmd arg} {
     set p [info procs "cmd[string toupper $cmd]"]
     if {$p ne ""} {
         {*}$p $serverid $arg
@@ -402,15 +396,9 @@ proc docmd {cmd arg} {
     }
 }
 
-proc sendmsg {text} {
-    set chan [channelpart $::active]
-    if {$chan eq {}} {
-        addchantext $::active "No channel joined.  Try /join #channel\n"
-        return
-    }
-    set serverid [serverpart $::active]
-    if {! [dict exists $::fds [serverpart $::active]]} {
-        addchantext $::active "Server is disconnected.\n"
+proc sendmsg {serverid chan text} {
+    if {![ischannel $::active]} {
+        addchantext $::active "This isn't a channel.\n"
         return
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
@@ -426,23 +414,25 @@ proc sendmsg {text} {
 }
 
 proc returnkey {} {
+    if {![dict exists $::fds [serverpart $::active]} {
+        addchantext $::active "Server is disconnected.\n"
+        return
+    }
     set msg [.cmd get]
     if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
-        docmd [string toupper $cmd] $msg
+        docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
     } else {
-        sendmsg $msg
+        sendmsg [serverpart $::active] [channelpart $::active] $msg
     }
     .cmd delete 0 end
 }
 
 proc setcurrenttopic {} {
-    set chan [channelpart $::active]
-    if {$chan eq {}} {
+    if {![ischannel $::active]} {
         addchantext $::active "This isn't a channel.\n"
         return
     }
-    set serverid [serverpart $::active]
-    send $serverid "TOPIC $chan :[.topic get]"
+    send [serverpart $::active] "TOPIC [channelpart $::active] :[.topic get]"
     focus .cmd
 }
 
