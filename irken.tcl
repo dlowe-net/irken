@@ -87,6 +87,15 @@ pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
 pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
 pack .root -fill both -expand 1
 
+proc sorttreechildren {window root} {
+    set items [lsort [$window children $root]]
+    $window detach $items
+    set count [llength $items]
+    for {set i 0} {$i < $count} {incr i} {
+        $window move [lindex $items $i] $root $i
+    }
+}
+
 proc addchantext {chanid text args} {
     dict lappend ::channeltext $chanid [concat [list $text] $args]
     if {$chanid ne $::active} {
@@ -143,12 +152,7 @@ proc addchanuser {chanid user} {
     }
     updatechaninfo $chanid
     .users insert {} end -id $user -text $user -tag [usertags $user]
-    set items [lsort [.users children {}]]
-    .users detach $items
-    set count [llength $items]
-    for {set i 0} {$i < $count} {incr i} {
-        .users move [lindex $items $i] {} $i
-    }
+    sorttreechildren .users {}
 }
 
 proc remchanuser {chanid user} {
@@ -203,12 +207,7 @@ proc newchan {chanid tags} {
     }
     dict set ::channeltext $chanid {}
     .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
-    set items [lsort [.nav children $serverid]]
-    .nav detach $items
-    set count [llength $items]
-    for {set i 0} {$i < $count} {incr i} {
-        .nav move [lindex $items $i] $serverid $i
-    }
+    sorttreechildren .nav $serverid
 }
 
 proc connect {serverid} {
