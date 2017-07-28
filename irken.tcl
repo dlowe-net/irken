@@ -40,8 +40,8 @@ source $configpath
 
 # ::servers is a dict keyed on fd containing the serverid
 set ::servers {}
-# ::fds is a dict keyed on serverid containing the fd
-set ::fds {}
+# ::fds is a dict keyed on serverid containing the fd and current nick
+set ::serverinfo {}
 # ::channeltext is a dict keyed on chanid containing channel text with tags
 set ::channeltext {}
 # ::channelinfo is a dict keyed on chanid containing topic and user list.
@@ -63,13 +63,15 @@ bind .nav <<TreeviewSelect>> selectchan
 .nav tag config direct -font $font -image [icon "/usr/share/seahorse/icons/hicolor/48x48/apps/seahorse-person.png"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
+ttk::entry .topic
 text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [font measure $font 0]}] right [expr {14 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
 .t tag config blue   -foreground blue
 .t tag config green  -foreground green
 .t tag config warning  -foreground red -font "$font italic"
-ttk::entry .topic
+ttk::frame .cmdline
+ttk::label .nick -padding 3
 ttk::entry .cmd
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -font $font -foreground red
@@ -81,7 +83,9 @@ bind .cmd <Return> returnkey
 bind .topic <Return> setcurrenttopic
 pack .nav -in .navframe -fill both -expand 1
 pack .topic -in .mainframe -side top -fill x
-pack .cmd -in .mainframe -side bottom -fill x -pady 5
+pack .nick -in .cmdline -side left
+pack .cmd -in .cmdline -side right -fill x -expand 1
+pack .cmdline -in .mainframe -side bottom -fill x -pady 5
 pack .t -in .mainframe -fill both -expand 1
 pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
 pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
@@ -191,6 +195,11 @@ proc selectchan {} {
         }
     }
     updatechaninfo $chanid
+    if {[dict exists $::serverinfo [serverpart $chanid] nick]} {
+        .nick configure -text [dict get $::serverinfo [serverpart $chanid] nick]
+    } else {
+        .nick configure -text [dict get $::config [serverpart $chanid] -nick]
+    }
 
     wm title . "Irken - $::active"
 }
@@ -222,11 +231,10 @@ proc connect {serverid} {
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
-    dict set ::fds $serverid $fd
-
+    dict set ::serverinfo $serverid [dict create fd $fd nick [dict get $::config $serverid -nick]]
 }
 
-proc send {serverid str} {set fd [dict get $::fds $serverid]; puts $fd $str; flush $fd}
+proc send {serverid str} {set fd [dict get $::serverinfo $serverid fd]; puts $fd $str; flush $fd}
 
 proc connected {fd} {
     fileevent $fd writable {}
@@ -414,7 +422,7 @@ proc sendmsg {serverid chan text} {
 }
 
 proc returnkey {} {
-    if {![dict exists $::fds [serverpart $::active]} {
+    if {![dict exists $::serverinfo [serverpart $::active]} {
         addchantext $::active "Server is disconnected.\n"
         return
     }
