@@ -246,6 +246,33 @@ proc disconnected {fd} {
     addchantext $serverid "Disconnected.\n" italic
 }
 
+proc handle001 {serverid msg} {
+    foreach chan [dict get $::config $serverid -autojoin] {
+        newchan [chanid $serverid $chan] disabled
+        send $serverid "JOIN $chan"
+    }
+}
+proc handle331 {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    setchantopic $chanid ""
+    addchantext $chanid "\t*\tNo channel topic set.\n" italic
+}
+proc handle332 {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    set topic [dict get $msg trailing]
+    setchantopic $chanid $topic
+    if {$topic ne ""} {
+        addchantext $chanid "\t*\tChannel topic: $topic\n" italic
+    } else {
+        addchantext $chanid "\t*\tNo channel topic set.\n" italic
+    }
+}
+proc handle353 {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
+    foreach user [dict get $msg trailing] {
+        addchanuser $chanid $user
+    }
+}
 proc handlePING {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
 proc handleJOIN {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
@@ -277,36 +304,6 @@ proc handlePART {serverid msg} {
     } else {
         # Someone else parted
         addchantext $chanid "[dict get $msg src] has left $chan\n" italic
-    }
-}
-proc handle331 {serverid msg} {
-    # Channel title
-    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-    setchantopic $chanid ""
-    addchantext $chanid "\t*\tNo channel topic set.\n" italic
-}
-proc handle332 {serverid msg} {
-    # Channel title
-    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-    set topic [dict get $msg trailing]
-    setchantopic $chanid $topic
-    if {$topic ne ""} {
-        addchantext $chanid "\t*\tChannel topic: $topic\n" italic
-    } else {
-        addchantext $chanid "\t*\tNo channel topic set.\n" italic
-    }
-}
-proc handle353 {serverid msg} {
-    set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
-    foreach user [dict get $msg trailing] {
-        addchanuser $chanid $user
-    }
-}
-proc handle376 {serverid msg} {
-    # End of MOTD
-    foreach chan [dict get $::config $serverid -autojoin] {
-        newchan [chanid $serverid $chan] disabled
-        send $serverid "JOIN $chan"
     }
 }
 proc handleTOPIC {serverid msg} {
