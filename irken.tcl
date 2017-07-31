@@ -53,9 +53,9 @@ set ::active {}
 proc icon {path} { return [image create photo -format png -data [exec -- convert -geometry 16x16 $path "png:-" | base64]] }
 set font "Monospace 10"
 ttk::panedwindow .root -orient horizontal
-.root add [ttk::frame .navframe -width 200]
-.root add [ttk::frame .mainframe -width 300 -height 300]
-.root add [ttk::frame .userframe -width 100]
+.root add [ttk::frame .navframe -width 200] -weight 0
+.root add [ttk::frame .mainframe -width 300 -height 300] -weight 1
+.root add [ttk::frame .userframe -width 120] -weight 0
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
 .nav tag config server -font $font -image [icon "/usr/share/icons/Humanity/apps/48/gnome-network-properties.svg"]
@@ -63,8 +63,8 @@ bind .nav <<TreeviewSelect>> selectchan
 .nav tag config direct -font $font -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
-ttk::entry .topic -takefocus 0
-text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [font measure $font 0]}] right [expr {14 * [font measure $font 0]}] left"
+ttk::entry .topic -takefocus 0 -font $font
+text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {20 * [font measure $font 0]}] right [expr {21 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
 .t tag config blue   -foreground blue
@@ -72,7 +72,7 @@ text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [fo
 .t tag config warning  -foreground red -font "$font italic"
 ttk::frame .cmdline
 ttk::label .nick -padding 3
-ttk::entry .cmd -validatecommand {historybreak}
+ttk::entry .cmd -validatecommand {historybreak} -font $font
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -font $font -foreground red
 .users tag config voice -font $font -foreground blue
@@ -103,15 +103,15 @@ proc sorttreechildren {window root} {
     }
 }
 
-proc addchantext {chanid text args} {
-    dict lappend ::channeltext $chanid [concat [list $text] $args]
+proc addchantext {chanid nick text args} {
+    dict lappend ::channeltext $chanid [list "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick" "bold $args" "\t$text" "$args"]
     if {$chanid ne $::active} {
         .nav tag add unread $chanid
         return
     }
     set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
     .t configure -state normal
-    .t insert end $text $args
+    .t insert end "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick" "bold $args" "\t$text" "$args"
     if {$atbottom} {
         .t yview end
     }
@@ -215,7 +215,7 @@ proc selectchan {} {
     .t delete 1.0 end
     if [dict exists $::channeltext $chanid] {
         foreach texttag [dict get $::channeltext $chanid] {
-            .t insert end [lindex $texttag 0] [lindex $texttag 1]
+            .t insert end {*}"$texttag"
         }
         .t yview end
     }
@@ -264,7 +264,7 @@ proc newchan {chanid tags} {
 proc connect {serverid} {
     set host [dict get $::config $serverid -host]
     set port [dict get $::config $serverid -port]
-    addchantext $serverid "Connecting to $serverid ($host:$port)...\n" italic
+    addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
     if [dict get $::config $serverid -ssl] {
         set fd [tls::socket $host $port]
     } else {
@@ -282,7 +282,7 @@ proc connected {fd} {
     fileevent $fd writable {}
     set serverid [dict get $::servers $fd]
     .nav tag remove disabled $serverid
-    addchantext $serverid "Connected.\n" italic
+    addchantext $serverid "*" "Connected.\n" italic
     send $serverid "NICK [dict get $::config $serverid -nick]"
     send $serverid "USER [dict get $::config $serverid -user] 0 * :Irken user"
 }
@@ -293,7 +293,7 @@ proc disconnected {fd} {
     fileevent $fd readable {}
 
     .nav tag add disabled $serverid
-    addchantext $serverid "Disconnected.\n" italic
+    addchantext $serverid "*" "Disconnected.\n" italic
 }
 
 proc handle001 {serverid msg} {
@@ -305,16 +305,16 @@ proc handle001 {serverid msg} {
 proc handle331 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     setchantopic $chanid ""
-    addchantext $chanid "\t*\tNo channel topic set.\n" italic
+    addchantext $chanid "*" "No channel topic set.\n" italic
 }
 proc handle332 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
     if {$topic ne ""} {
-        addchantext $chanid "\t*\tChannel topic: $topic\n" italic
+        addchantext $chanid "*" "Channel topic: $topic\n" italic
     } else {
-        addchantext $chanid "\t*\tNo channel topic set.\n" italic
+        addchantext $chanid "*" "No channel topic set.\n" italic
     }
 }
 proc handle353 {serverid msg} {
@@ -337,12 +337,12 @@ proc handleJOIN {serverid msg} {
         }
     } else {
         # Someone else joined
-        addchantext $chanid "[dict get $msg src] has joined $chan\n" italic
+        addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
     }
 }
 proc handleQUIT {serverid msg} {
     remchanuser $chanid [dict get $msg src]
-    addchantext $serverid "[dict get $msg src] has quit.\n" italic
+    addchantext $serverid "*" "[dict get $msg src] has quit.\n" italic
 }
 proc handlePART {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
@@ -353,14 +353,14 @@ proc handlePART {serverid msg} {
         .nav tag add disabled $chanid
     } else {
         # Someone else parted
-        addchantext $chanid "[dict get $msg src] has left $chan\n" italic
+        addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
     }
 }
 proc handleTOPIC {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
-    addchantext $chanid "\t*\t[dict get $msg src] sets title to $topic\n" italic
+    addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" italic
 }
 proc handlePRIVMSG {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
@@ -376,11 +376,9 @@ proc handlePRIVMSG {serverid msg} {
     set tag ""
     if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag green}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
-        addchantext $chanid "\t*\t[dict get $msg src] " bold $tag
-        addchantext $chanid "$text\n" $tag
+        addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
     } else {
-        addchantext $chanid "\t[dict get $msg src]\t" bold $tag
-        addchantext $chanid "$text\n" $tag
+        addchantext $chanid [dict get $msg src] "$text\n" $tag
     }
 }
 proc handleNOTICE {serverid msg} {
@@ -411,13 +409,13 @@ proc recv {fd} {
     if {$p ne ""} {
         {*}$p $serverid $msg
     } else {
-        addchantext $serverid $line\n
+        addchantext $serverid "*" $line\n
     }
 }
 
 proc cmdSERVER {serverid arg} {
     if {! [dict exists $::config $arg]} {
-        addchantext $::active "$arg is not a server.\n" {} $::config
+        addchantext $::active "*" "$arg is not a server.\n" {} $::config
         return
     }
     connect $arg
@@ -433,7 +431,7 @@ proc cmdJOIN {serverid arg} {
     send $serverid "JOIN :$arg"
 }
 proc cmdEVAL {serverid arg} {
-    addchantext $::active "$arg -> [eval $arg]\n" italic
+    addchantext $::active "*" "$arg -> [eval $arg]\n" italic
 }
 
 proc docmd {serverid chan cmd arg} {
@@ -448,24 +446,21 @@ proc docmd {serverid chan cmd arg} {
 
 proc sendmsg {serverid chan text} {
     if {![ischannel $::active]} {
-        addchantext $::active "This isn't a channel.\n"
+        addchantext $::active "*" "This isn't a channel.\n"
         return
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
-    set tag {blue}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
-        addchantext $::active "\t*\t[dict get $::config $serverid -nick] " bold $tag
-        addchantext $::active "$text\n" $tag
+        addchantext $::active "*" "[dict get $::config $serverid -nick] $nick\n" blue
     } else {
-        addchantext $::active "\t[dict get $::config $serverid -nick]\t" bold $tag
-        addchantext $::active "$text\n" $tag
+        addchantext $::active [dict get $::config $serverid -nick] "$text\n" blue
     }
     .t yview end
 }
 
 proc returnkey {} {
     if {![dict exists $::serverinfo [serverpart $::active]]} {
-        addchantext $::active "Server is disconnected.\n"
+        addchantext $::active "*" "Server is disconnected.\n"
         return
     }
     set msg [.cmd get]
@@ -481,7 +476,7 @@ proc returnkey {} {
 
 proc setcurrenttopic {} {
     if {![ischannel $::active]} {
-        addchantext $::active "This isn't a channel.\n"
+        addchantext $::active "*" "This isn't a channel.\n"
         return
     }
     send [serverpart $::active] "TOPIC [channelpart $::active] :[.topic get]"
