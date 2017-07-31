@@ -44,7 +44,7 @@ set ::servers {}
 set ::serverinfo {}
 # ::channeltext is a dict keyed on chanid containing channel text with tags
 set ::channeltext {}
-# ::channelinfo is a dict keyed on chanid containing topic and user list.
+# ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
 set ::channelinfo {}
 # ::active is the chanid of the shown channel.
 set ::active {}
@@ -72,7 +72,7 @@ text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [fo
 .t tag config warning  -foreground red -font "$font italic"
 ttk::frame .cmdline
 ttk::label .nick -padding 3
-ttk::entry .cmd
+ttk::entry .cmd -validatecommand {historybreak}
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -font $font -foreground red
 .users tag config voice -font $font -foreground blue
@@ -80,6 +80,8 @@ ttk::treeview .users -show tree -selectmode browse
 .users column "#0" -width 100
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
 bind .cmd <Return> returnkey
+bind .cmd <Up> [list history up]
+bind .cmd <Down> [list history down]
 bind .topic <Return> setcurrenttopic
 pack .nav -in .navframe -fill both -expand 1
 pack .topic -in .mainframe -side top -fill x
@@ -132,6 +134,41 @@ proc updatechaninfo {chanid} {
     } else {
         .chaninfo configure -text {}
     }
+}
+
+proc historybreak {} {
+    dict set ::channelinfo $::active historyidx {}
+    return 1
+}
+
+proc history {op} {
+    set oldidx [dict get $::channelinfo $::active historyidx]
+    set idx $oldidx
+    set cmdhistory [dict get $::channelinfo $::active cmdhistory]
+    switch -- $op {
+        "up" {
+            set idx [if {$idx eq {}} {expr 0} {expr {$idx + 1}}]
+            if {$idx >= [llength $cmdhistory]} {
+                set idx [expr {[llength $cmdhistory] - 1}]
+            }
+        }
+        "down" {
+            set idx [if {$idx eq {}} {expr {}} {expr {$idx - 1}}]
+            if {$idx < 0} {
+                set idx {}
+            }
+        }
+    }
+    if {$idx eq $oldidx} {
+        return
+    }
+    dict set ::channelinfo $::active historyidx $idx
+    .cmd configure -validate none
+    .cmd delete 0 end
+    if {$idx ne {}} {
+        .cmd insert 0 [lindex $cmdhistory $idx]
+    }
+    .cmd configure -validate key
 }
 
 proc usertags {user} {
@@ -215,6 +252,7 @@ proc newchan {chanid tags} {
         set tag {channel}
     }
     dict set ::channeltext $chanid {}
+    dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
     if {$name eq {}} {
         .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
     } else {
@@ -431,6 +469,8 @@ proc returnkey {} {
         return
     }
     set msg [.cmd get]
+    dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
+    historybreak
     if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
         docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
     } else {
