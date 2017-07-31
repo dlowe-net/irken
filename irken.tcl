@@ -90,6 +90,7 @@ pack .t -in .mainframe -fill both -expand 1
 pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
 pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
 pack .root -fill both -expand 1
+bind . <Escape> {exec wish $argv0 &; exit}
 
 proc sorttreechildren {window root} {
     set items [lsort [$window children $root]]
@@ -451,9 +452,6 @@ dict for {serverid serverconf} $::config {
 # select first serverid by default
 .nav selection set [lindex $::config 0]
 selectchan
-
-# quick restart
-bind . <Escape> {exec wish $argv0 &; exit}
 
 # autoconnect to servers
 dict for {serverid serverconf} $::config {
