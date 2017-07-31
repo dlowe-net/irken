@@ -317,12 +317,23 @@ proc handle332 {serverid msg} {
         addchantext $chanid "*" "No channel topic set.\n" italic
     }
 }
+proc handle333 {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    set nick [lindex [dict get $msg args] 1]
+    set time [lindex [dict get $msg args] 2]
+    addchantext $chanid "*" "Topic set by $nick at [clock format $time].\n" italic
+}
 proc handle353 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
     foreach user [dict get $msg trailing] {
         addchanuser $chanid $user
     }
 }
+proc handle366 {serverid msg} {}
+proc handle372 {serverid msg} {
+    addchantext $serverid "*" "[dict get $msg trailing]\n" italic
+}
+proc handle376 {serverid msg} {}
 proc handlePING {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
 proc handleJOIN {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
