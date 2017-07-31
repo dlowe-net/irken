@@ -26,7 +26,7 @@ proc ischannel {chanid} {
 
 # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
 set ::config {}
-set configpath $::env(HOME)/.irken
+set configpath $::env(HOME)/.config/irken/config.tcl
 proc server {serverid args}  {dict set ::config $serverid $args}
 if {! [file exists $configpath]} {
     if {[catch {open $configpath w} fp]} {
@@ -58,9 +58,9 @@ ttk::panedwindow .root -orient horizontal
 .root add [ttk::frame .userframe -width 100]
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
-.nav tag config server -font $font -image [icon "/usr/share/evolution/3.10/icons/hicolor/48x48/categories/preferences-system-network-proxy.png"]
-.nav tag config channel -font $font -image [icon "/usr/share/evolution/3.10/icons/hicolor/48x48/actions/stock_people.png"]
-.nav tag config direct -font $font -image [icon "/usr/share/seahorse/icons/hicolor/48x48/apps/seahorse-person.png"]
+.nav tag config server -font $font -image [icon "/usr/share/icons/Humanity/apps/48/gnome-network-properties.svg"]
+.nav tag config channel -font $font -image [icon "/usr/share/icons/Humanity/apps/48/system-users.svg"]
+.nav tag config direct -font $font -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
 ttk::entry .topic -takefocus 0
