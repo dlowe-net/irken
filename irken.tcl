@@ -423,7 +423,7 @@ proc sendmsg {serverid chan text} {
 }
 
 proc returnkey {} {
-    if {![dict exists $::serverinfo [serverpart $::active]} {
+    if {![dict exists $::serverinfo [serverpart $::active]]} {
         addchantext $::active "Server is disconnected.\n"
         return
     }
