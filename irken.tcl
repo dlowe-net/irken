@@ -210,13 +210,16 @@ proc newchan {chanid tags} {
     set name [channelpart $chanid]
     set tag {direct}
     if {$name eq ""} {
-        set name $serverid
         set tag {server}
     } elseif {[ischannel $chanid]} {
         set tag {channel}
     }
     dict set ::channeltext $chanid {}
-    .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+    if {$name eq {}} {
+        .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
+    } else {
+        .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+    }
     sorttreechildren .nav $serverid
 }
 
@@ -447,15 +450,11 @@ proc setcurrenttopic {} {
 
 # initialize
 dict for {serverid serverconf} $::config {
-    .nav insert {} end -id $serverid -text $serverid -open true -tag {server disabled}
-}
-# select first serverid by default
-.nav selection set [lindex $::config 0]
-selectchan
-
-# autoconnect to servers
-dict for {serverid serverconf} $::config {
+    newchan $serverid [list disabled]
     if {[dict get $serverconf -autoconnect]} {
         connect $serverid
     }
 }
+# select first serverid by default
+.nav selection set [lindex $::config 0]
+selectchan
