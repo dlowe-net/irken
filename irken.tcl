@@ -63,7 +63,7 @@ bind .nav <<TreeviewSelect>> selectchan
 .nav tag config direct -font $font -image [icon "/usr/share/seahorse/icons/hicolor/48x48/apps/seahorse-person.png"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
-ttk::entry .topic
+ttk::entry .topic -takefocus 0
 text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {12 * [font measure $font 0]}] right [expr {14 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
