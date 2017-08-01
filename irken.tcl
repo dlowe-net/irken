@@ -149,16 +149,10 @@ proc history {op} {
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
         "up" {
-            set idx [if {$idx eq {}} {expr 0} {expr {$idx + 1}}]
-            if {$idx >= [llength $cmdhistory]} {
-                set idx [expr {[llength $cmdhistory] - 1}]
-            }
+            set idx [expr {$idx eq {} ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]
         }
         "down" {
-            set idx [if {$idx eq {}} {expr {""}} {expr {$idx - 1}}]
-            if {$idx ne {} && $idx < 0} {
-                set idx {}
-            }
+            set idx [expr {$idx eq {} || $idx == 0 ? "" : $idx - 1}]
         }
     }
     if {$idx eq $oldidx} {
