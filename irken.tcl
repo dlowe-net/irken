@@ -150,8 +150,8 @@ proc history {op} {
             }
         }
         "down" {
-            set idx [if {$idx eq {}} {expr {}} {expr {$idx - 1}}]
-            if {$idx < 0} {
+            set idx [if {$idx eq {}} {expr {""}} {expr {$idx - 1}}]
+            if {$idx ne {} && $idx < 0} {
                 set idx {}
             }
         }
