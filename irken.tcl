@@ -47,7 +47,7 @@ set ::channelinfo {}
 set ::active {}
 
 # interface setup
-proc icon {path} { return [image create photo -format png -data [exec -- convert -geometry 16x16 $path "png:-" | base64]] }
+proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
 set font "Monospace 10"
 ttk::panedwindow .root -orient horizontal
 .root add [ttk::frame .navframe -width 170] -weight 0
@@ -56,8 +56,8 @@ ttk::panedwindow .root -orient horizontal
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
 .nav column "#0" -width 150
-.nav tag config server -font $font -image [icon "/usr/share/icons/Humanity/apps/48/gnome-network-properties.svg"]
-.nav tag config channel -font $font -image [icon "/usr/share/icons/Humanity/apps/48/system-users.svg"]
+.nav tag config server -font $font -image [icon "/usr/share/icons/Humanity/apps/22/gnome-network-properties.svg"]
+.nav tag config channel -font $font -image [icon "/usr/share/icons/Humanity/apps/22/system-users.svg"]
 .nav tag config direct -font $font -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
