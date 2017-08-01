@@ -76,10 +76,6 @@ ttk::treeview .users -show tree -selectmode browse
 .users tag config user -font $font
 .users column "#0" -width 140
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
-bind .cmd <Return> returnkey
-bind .cmd <Up> [list history up]
-bind .cmd <Down> [list history down]
-bind .topic <Return> setcurrenttopic
 pack .nav -in .navframe -fill both -expand 1
 pack .topic -in .mainframe -side top -fill x
 pack .nick -in .cmdline -side left
@@ -90,6 +86,14 @@ pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
 pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
 pack .root -fill both -expand 1
 bind . <Escape> {exec wish $argv0 &; exit}
+bind . <Prior> [list .t yview scroll -1 page]
+bind . <Next> [list .t yview scroll 1 page]
+bind . <Control-Prior> [list ttk::treeview::Keynav .nav up]
+bind . <Control-Next> [list ttk::treeview::Keynav .nav down]
+bind .topic <Return> setcurrenttopic
+bind .cmd <Return> returnkey
+bind .cmd <Up> [list history up]
+bind .cmd <Down> [list history down]
 
 proc sorttreechildren {window root} {
     set items [lsort [$window children $root]]
@@ -208,6 +212,7 @@ proc selectchan {} {
     if {$chanid eq $::active} {
         return
     }
+    .nav focus $chanid
     .nav tag remove unread $chanid
     set ::active $chanid
     .t configure -state normal
@@ -445,7 +450,6 @@ proc cmdJOIN {serverid arg} {
         newchan $chanid disabled
     }
     .nav selection set $chanid
-    selectchan
     send $serverid "JOIN :$arg"
 }
 proc cmdEVAL {serverid arg} {
@@ -510,4 +514,4 @@ dict for {serverid serverconf} $::config {
 }
 # select first serverid by default
 .nav selection set [lindex $::config 0]
-selectchan
+focus .cmd
