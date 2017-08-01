@@ -1,9 +1,5 @@
 #!/usr/bin/wish8.6
 # Irken - dlowe@dlowe.net
-if {[catch {package require Tk} cerr]} {
-    puts "Could not load Tk.  Please run: sudo apt install tcl-tk tcl-tls"
-    exit 1
-}
 if {[catch {package require tls} cerr]} {
     puts "Could not load TLS library.  Please run: sudo apt install tcl-tls"
     exit 1
