@@ -49,18 +49,19 @@ set ::active {}
 proc icon {path} { return [image create photo -format png -data [exec -- convert -geometry 16x16 $path "png:-" | base64]] }
 set font "Monospace 10"
 ttk::panedwindow .root -orient horizontal
-.root add [ttk::frame .navframe -width 200] -weight 0
+.root add [ttk::frame .navframe -width 170] -weight 0
 .root add [ttk::frame .mainframe -width 300 -height 300] -weight 1
-.root add [ttk::frame .userframe -width 120] -weight 0
+.root add [ttk::frame .userframe -width 140] -weight 0
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
+.nav column "#0" -width 150
 .nav tag config server -font $font -image [icon "/usr/share/icons/Humanity/apps/48/gnome-network-properties.svg"]
 .nav tag config channel -font $font -image [icon "/usr/share/icons/Humanity/apps/48/system-users.svg"]
 .nav tag config direct -font $font -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
 .nav tag config unread -foreground orange
 ttk::entry .topic -takefocus 0 -font $font
-text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {20 * [font measure $font 0]}] right [expr {21 * [font measure $font 0]}] left"
+text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {25 * [font measure $font 0]}] right [expr {26 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
 .t tag config blue   -foreground blue
@@ -73,7 +74,7 @@ ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -font $font -foreground red
 .users tag config voice -font $font -foreground blue
 .users tag config user -font $font
-.users column "#0" -width 100
+.users column "#0" -width 140
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
 bind .cmd <Return> returnkey
 bind .cmd <Up> [list history up]
