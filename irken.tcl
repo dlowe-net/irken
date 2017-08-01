@@ -197,8 +197,10 @@ proc addchanuser {chanid user} {
 proc remchanuser {chanid user} {
     set users [dict get $::channelinfo $chanid users]
     set idx [lsearch $users $user]
-    set users [lreplace $users $idx $idx]
-    dict set ::channelinfo $chanid users $users
+    if {$idx != -1} {
+        set users [lreplace $users $idx $idx]
+        dict set ::channelinfo $chanid users $users
+    }
 }
 
 proc selectchan {} {
@@ -349,8 +351,16 @@ proc handleJOIN {serverid msg} {
     }
 }
 proc handleQUIT {serverid msg} {
-    remchanuser $chanid [dict get $msg src]
-    addchantext $serverid "*" "[dict get $msg src] has quit.\n" italic
+    foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
+        if {[lsearch [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
+            remchanuser $chanid [dict get $msg src]
+            if {[dict exists $msg trailing]} {
+                addchantext $chanid "*" "[dict get $msg src] has quit ([dict get $msg trailing])\n" italic
+            } else {
+                addchantext $chanid "*" "[dict get $msg src] has quit\n" italic
+            }
+        }
+    }
 }
 proc handlePART {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
