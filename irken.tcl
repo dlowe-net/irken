@@ -23,6 +23,7 @@ proc ischannel {chanid} {
 # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
 set ::config {}
 set configpath $::env(HOME)/.config/irken/config.tcl
+file mkdir [file dirname $configpath]
 proc server {serverid args}  {dict set ::config $serverid $args}
 if {! [file exists $configpath]} {
     if {[catch {open $configpath w} fp]} {
