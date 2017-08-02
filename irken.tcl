@@ -359,9 +359,9 @@ proc handleJOIN {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     addchanuser $chanid [dict get $msg src]
-    if {[dict get $::config $serverid -nick] eq [dict get $msg src]} {
+    if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
         # I joined
-        if [dict exists $::channeltext $chanid] {
+        if [dict exists $::channelinfo $chanid] {
             .nav tag remove disabled $chanid
         } else {
             ensurechan $chanid {}
@@ -387,7 +387,7 @@ proc handlePART {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     remchanuser $chanid [dict get $msg src]
-    if {[dict get $::config $serverid -nick] eq [dict get $msg src]} {
+    if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
         # I parted
         .nav tag add disabled $chanid
     } else {
@@ -403,7 +403,7 @@ proc handleTOPIC {serverid msg} {
 }
 proc handlePRIVMSG {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
-    if {$chan eq [dict get $::config $serverid -nick]} {
+    if {$chan eq [dict get $::serverinfo $serverid nick]} {
         # direct message - so chan is source, not target
         set chan [dict get $msg src]
     }
@@ -411,7 +411,7 @@ proc handlePRIVMSG {serverid msg} {
     set chanid [chanid $serverid $chan]
     ensurechan $chanid {}
     set tag ""
-    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag highlight}
+    if {[string first [dict get $::serverinfo $serverid nick] $text] != -1} {set tag highlight}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
         addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
     } else {
@@ -485,9 +485,9 @@ proc sendmsg {serverid chan text} {
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
-        addchantext $::active "*" "[dict get $::config $serverid -nick] $nick\n" self
+        addchantext $::active "*" "[dict get $::serverinfo $serverid nick] $nick\n" self
     } else {
-        addchantext $::active [dict get $::config $serverid -nick] "$text\n" self
+        addchantext $::active [dict get $::serverinfo $serverid nick] "$text\n" self
     }
     .t yview end
 }
