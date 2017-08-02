@@ -259,7 +259,10 @@ proc selectchan {} {
     wm title . "Irken - $::active"
 }
 
-proc newchan {chanid tags} {
+proc ensurechan {chanid tags} {
+    if {[dict exists $::channelinfo $chanid]} {
+        return
+    }
     set serverid [serverpart $chanid]
     set name [channelpart $chanid]
     set tag {direct}
@@ -315,7 +318,7 @@ proc disconnected {fd} {
 
 proc handle001 {serverid msg} {
     foreach chan [dict get $::config $serverid -autojoin] {
-        newchan [chanid $serverid $chan] disabled
+        ensurechan [chanid $serverid $chan] disabled
         send $serverid "JOIN $chan"
     }
 }
@@ -361,7 +364,7 @@ proc handleJOIN {serverid msg} {
         if [dict exists $::channeltext $chanid] {
             .nav tag remove disabled $chanid
         } else {
-            newchan $chanid {}
+            ensurechan $chanid {}
         }
     } else {
         # Someone else joined
@@ -406,9 +409,7 @@ proc handlePRIVMSG {serverid msg} {
     }
     set text [dict get $msg trailing]
     set chanid [chanid $serverid $chan]
-    if {! [dict exists $::channeltext $chanid]} {
-        newchan $chanid {}
-    }
+    ensurechan $chanid {}
     set tag ""
     if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag highlight}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
@@ -459,9 +460,7 @@ proc cmdSERVER {serverid arg} {
 proc cmdME {serverid arg} { sendmsg "\001ACTION $arg\001" }
 proc cmdJOIN {serverid arg} {
     set chanid [chanid $serverid $arg]
-    if {! [dict exists $::channeltext $chanid]} {
-        newchan $chanid disabled
-    }
+    ensurechan $chanid disabled
     .nav selection set $chanid
     send $serverid "JOIN :$arg"
 }
@@ -520,7 +519,7 @@ proc setcurrenttopic {} {
 
 # initialize
 dict for {serverid serverconf} $::config {
-    newchan $serverid [list disabled]
+    ensurechan $serverid [list disabled]
     if {[dict get $serverconf -autoconnect]} {
         connect $serverid
     }
