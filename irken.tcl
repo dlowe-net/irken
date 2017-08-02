@@ -60,13 +60,14 @@ bind .nav <<TreeviewSelect>> selectchan
 .nav tag config channel -font $font -image [icon "/usr/share/icons/Humanity/apps/22/system-users.svg"]
 .nav tag config direct -font $font -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
+.nav tag config highlight -foreground green
 .nav tag config unread -foreground orange
 ttk::entry .topic -takefocus 0 -font $font
 text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {25 * [font measure $font 0]}] right [expr {26 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
 .t tag config self   -foreground darkgray
-.t tag config hilite  -foreground green
+.t tag config highlight  -foreground green
 .t tag config warning  -foreground red -font "$font italic"
 .t tag config hlink -foreground blue -underline 1
 .t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
@@ -120,7 +121,11 @@ proc addchantext {chanid nick text args} {
     lappend newtext "[string range $text $textstart end]" $args
     dict lappend ::channeltext $chanid $newtext
     if {$chanid ne $::active} {
-        .nav tag add unread $chanid
+        if {[lsearch $args highlight] != -1} {
+            .nav tag add highlight $chanid
+        } else {
+            .nav tag add unread $chanid
+        }
         return
     }
     set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
@@ -221,6 +226,7 @@ proc selectchan {} {
     }
     .nav focus $chanid
     .nav tag remove unread $chanid
+    .nav tag remove highlight $chanid
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
@@ -404,7 +410,7 @@ proc handlePRIVMSG {serverid msg} {
         newchan $chanid {}
     }
     set tag ""
-    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag hilite}
+    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag highlight}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
         addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
     } else {
