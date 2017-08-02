@@ -464,6 +464,16 @@ proc cmdJOIN {serverid arg} {
     .nav selection set $chanid
     send $serverid "JOIN :$arg"
 }
+proc cmdMSG {serverid arg} {
+    set target [lrange $arg 0 0]
+    set text [lrange $arg 1 end]
+    send $serverid "PRIVMSG $target :$text"
+
+    set chanid [chanid $serverid $target]
+    ensurechan $chanid {}
+    .nav selection set $chanid
+    addchantext $chanid [dict get $::serverinfo $serverid nick] "$text\n" self
+}
 proc cmdEVAL {serverid arg} {
     addchantext $::active "*" "$arg -> [eval $arg]\n" italic
 }
