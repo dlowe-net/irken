@@ -65,9 +65,11 @@ ttk::entry .topic -takefocus 0 -font $font
 text .t -height 30 -wrap word -font $font -state disabled -tabs "[expr {25 * [font measure $font 0]}] right [expr {26 * [font measure $font 0]}] left"
 .t tag config bold   -font "$font bold"
 .t tag config italic -font "$font italic"
-.t tag config blue   -foreground blue
-.t tag config green  -foreground green
+.t tag config self   -foreground darkgray
+.t tag config hilite  -foreground green
 .t tag config warning  -foreground red -font "$font italic"
+.t tag config hlink -foreground blue -underline 1
+.t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
 ttk::frame .cmdline
 ttk::label .nick -padding 3
 ttk::entry .cmd -validatecommand {historybreak} -font $font
@@ -106,14 +108,24 @@ proc sorttreechildren {window root} {
 }
 
 proc addchantext {chanid nick text args} {
-    dict lappend ::channeltext $chanid [list "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick" "bold $args" "\t$text" "$args"]
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "bold $args"
+    set textstart 0
+    if {[regexp -all -indices {https?://[a-zA-Z/_%+.]+} $text match] != 0} {
+        foreach {start end} $match {
+            lappend newtext [string range $text $textstart $start-1] $args
+            lappend newtext [string range $text $start $end] [concat hlink $args]
+            set textstart [expr {$end + 1}]
+        }
+    }
+    lappend newtext "[string range $text $textstart end]" $args
+    dict lappend ::channeltext $chanid $newtext
     if {$chanid ne $::active} {
         .nav tag add unread $chanid
         return
     }
     set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
     .t configure -state normal
-    .t insert end "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick" "bold $args" "\t$text" "$args"
+    .t insert end {*}$newtext
     if {$atbottom} {
         .t yview end
     }
@@ -392,7 +404,7 @@ proc handlePRIVMSG {serverid msg} {
         newchan $chanid {}
     }
     set tag ""
-    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag green}
+    if {[string first [dict get $::config $serverid -nick] $text] != -1} {set tag hilite}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
         addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
     } else {
@@ -468,9 +480,9 @@ proc sendmsg {serverid chan text} {
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
-        addchantext $::active "*" "[dict get $::config $serverid -nick] $nick\n" blue
+        addchantext $::active "*" "[dict get $::config $serverid -nick] $nick\n" self
     } else {
-        addchantext $::active [dict get $::config $serverid -nick] "$text\n" blue
+        addchantext $::active [dict get $::config $serverid -nick] "$text\n" self
     }
     .t yview end
 }
