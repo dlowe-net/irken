@@ -1,7 +1,7 @@
 #!/usr/bin/wish8.6
 # Irken - dlowe@dlowe.net
 if {[catch {package require tls} cerr]} {
-    puts "Could not load TLS library.  Please run: sudo apt install tcl-tls"
+    puts stderr "Could not load TLS library.  Please run: sudo apt install tcl-tls"
     exit 1
 }
 
@@ -42,7 +42,7 @@ file mkdir [file dirname $configpath]
 proc server {serverid args}  {dict set ::config $serverid $args}
 if {! [file exists $configpath]} {
     if {[catch {open $configpath w} fp]} {
-        puts "Couldn't write default config.  Exiting."
+        puts stderr "Couldn't write default config.  Exiting."
         exit 1
     }
     puts $fp {server "Freenode" -host chat.freenode.net -port 6667 -ssl false -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
