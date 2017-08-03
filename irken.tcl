@@ -33,16 +33,7 @@ proc hook {op name args} {
 proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return $serverid/$chan} }
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
-proc ischannel {chanid} {
-    set chan [channelpart $chanid]
-    if {$chan eq {}} {
-        return False
-    }
-    if {[lsearch -exact "# & +" [string range $chan 0 0]] == -1} {
-        return False
-    }
-    return True
-}
+proc ischannel {chanid} {expr {[lsearch -exact "# & +" [string range [channelpart $chanid] 0 0]] == -1}}
 
 # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
 set ::config {}
