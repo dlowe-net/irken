@@ -108,35 +108,6 @@ proc sorttreechildren {window root} {
     }
 }
 
-proc addchantext {chanid nick text args} {
-    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "bold $args"
-    set textstart 0
-    if {[regexp -all -indices {https?://[a-zA-Z/_%+.]+} $text match] != 0} {
-        foreach {start end} $match {
-            lappend newtext [string range $text $textstart $start-1] $args
-            lappend newtext [string range $text $start $end] [concat hlink $args]
-            set textstart [expr {$end + 1}]
-        }
-    }
-    lappend newtext "[string range $text $textstart end]" $args
-    dict lappend ::channeltext $chanid $newtext
-    if {$chanid ne $::active} {
-        if {[lsearch $args highlight] != -1} {
-            .nav tag add highlight $chanid
-        } else {
-            .nav tag add unread $chanid
-        }
-        return
-    }
-    set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
-    .t configure -state normal
-    .t insert end {*}$newtext
-    if {$atbottom} {
-        .t yview end
-    }
-    .t configure -state disabled
-}
-
 proc setchantopic {chanid text} {
     dict set ::channelinfo $chanid topic $text
     if {$chanid eq $::active} {
@@ -219,6 +190,35 @@ proc remchanuser {chanid user} {
     }
 }
 
+proc addchantext {chanid nick text args} {
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "bold $args"
+    set textstart 0
+    if {[regexp -all -indices {https?://[a-zA-Z/_%+.]+} $text match] != 0} {
+        foreach {start end} $match {
+            lappend newtext [string range $text $textstart $start-1] $args
+            lappend newtext [string range $text $start $end] [concat hlink $args]
+            set textstart [expr {$end + 1}]
+        }
+    }
+    lappend newtext "[string range $text $textstart end]" $args
+    dict append ::channeltext $chanid " $newtext"
+    if {$chanid ne $::active} {
+        if {[lsearch $args highlight] != -1} {
+            .nav tag add highlight $chanid
+        } else {
+            .nav tag add unread $chanid
+        }
+        return
+    }
+    set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
+    .t configure -state normal
+    .t insert end {*}$newtext
+    if {$atbottom} {
+        .t yview end
+    }
+    .t configure -state disabled
+}
+
 proc selectchan {} {
     set chanid [.nav selection]
     if {$chanid eq $::active} {
@@ -230,10 +230,8 @@ proc selectchan {} {
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
-    if [dict exists $::channeltext $chanid] {
-        foreach texttag [dict get $::channeltext $chanid] {
-            .t insert end {*}"$texttag"
-        }
+    if {[dict get $::channeltext $chanid] ne ""} {
+        .t insert end {*}[dict get $::channeltext $chanid]
         .t yview end
     }
     .t configure -state disabled
