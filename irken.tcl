@@ -5,6 +5,30 @@ if {[catch {package require tls} cerr]} {
     exit 1
 }
 
+# Hooks
+set ::hooks [dict create]
+proc hook {op name args} {
+    dict lappend ::hooks $name
+    set hook [dict get $::hooks $name]
+    switch -- $op {
+        "prepend" -
+        "append" {
+            if {[llength $args] != 3} {
+                error "Invalid # of args - hooks (pre|a)ppend hookname thishook params body"
+            }
+            if {[set hookidx [lsearch -index 0 $hook [lrange $args 0 0]]] == -1} {
+                dict set ::hooks $name [linsert $hook [expr {$op eq "prepend" ? 0 : "end"}] $args]
+            } else {
+                dict set ::hooks $name [lreplace $hook $hookidx $hookidx $args]
+            }
+        }
+        "remove" {dict set ::hooks $name [lsearch -all -inline -not -index 0 $hook $hookname]}
+        "exists" {expr {$hook ne {}}}
+        "clear" {dict set ::hooks $name {}}
+        "call" {foreach hookproc $hook {apply [lrange $hookproc 1 2] {*}$args}}
+    }
+}
+
 # A chanid is $serverid for the server channel, $serverid/$channel for channel display.
 proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return $serverid/$chan} }
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
@@ -314,18 +338,18 @@ proc disconnected {fd} {
     addchantext $serverid "*" "Disconnected.\n" italic
 }
 
-proc handle001 {serverid msg} {
+hook append handle001 irken {serverid msg} {
     foreach chan [dict get $::config $serverid -autojoin] {
         ensurechan [chanid $serverid $chan] disabled
         send $serverid "JOIN $chan"
     }
 }
-proc handle331 {serverid msg} {
+hook append handle331 irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     setchantopic $chanid ""
     addchantext $chanid "*" "No channel topic set.\n" italic
 }
-proc handle332 {serverid msg} {
+hook append handle332 irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
@@ -335,25 +359,25 @@ proc handle332 {serverid msg} {
         addchantext $chanid "*" "No channel topic set.\n" italic
     }
 }
-proc handle333 {serverid msg} {
+hook append handle333 irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set nick [lindex [dict get $msg args] 1]
     set time [lindex [dict get $msg args] 2]
     addchantext $chanid "*" "Topic set by $nick at [clock format $time].\n" italic
 }
-proc handle353 {serverid msg} {
+hook append handle353 irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
     foreach user [dict get $msg trailing] {
         addchanuser $chanid $user
     }
 }
-proc handle366 {serverid msg} {}
-proc handle372 {serverid msg} {
+hook append handle366 irken {serverid msg} {}
+hook append handle372 irken {serverid msg} {
     addchantext $serverid "*" "[dict get $msg trailing]\n" italic
 }
-proc handle376 {serverid msg} {}
-proc handlePING {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
-proc handleJOIN {serverid msg} {
+hook append handle376 irken {serverid msg} {}
+hook append handlePING irken {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
+hook append handleJOIN irken {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     addchanuser $chanid [dict get $msg src]
@@ -369,7 +393,7 @@ proc handleJOIN {serverid msg} {
         addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
     }
 }
-proc handleQUIT {serverid msg} {
+hook append handleQUIT irken {serverid msg} {
     foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
         if {[lsearch [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
             remchanuser $chanid [dict get $msg src]
@@ -381,7 +405,7 @@ proc handleQUIT {serverid msg} {
         }
     }
 }
-proc handlePART {serverid msg} {
+hook append handlePART irken {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     remchanuser $chanid [dict get $msg src]
@@ -393,13 +417,13 @@ proc handlePART {serverid msg} {
         addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
     }
 }
-proc handleTOPIC {serverid msg} {
+hook append handleTOPIC irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
     addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" italic
 }
-proc handlePRIVMSG {serverid msg} {
+hook append handlePRIVMSG irken {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     if {$chan eq [dict get $::serverinfo $serverid nick]} {
         # direct message - so chan is source, not target
@@ -416,8 +440,11 @@ proc handlePRIVMSG {serverid msg} {
         addchantext $chanid [dict get $msg src] "$text\n" $tag
     }
 }
-proc handleNOTICE {serverid msg} {
-    handlePRIVMSG $serverid $msg
+hook append handleNOTICE irken {serverid msg} {
+    hook call handlePRIVMSG $serverid $msg
+}
+hook append handleUnknown irken {serverid msg} {
+    addchantext $serverid "*" $line\n
 }
 
 proc recv {fd} {
@@ -440,29 +467,29 @@ proc recv {fd} {
         set args [lrange $args 1 end]
     }
     set msg [dict create src $src user $user host $host cmd $cmd args $args trailing $trailing]
-    set p [info procs handle$cmd]
-    if {$p ne ""} {
-        {*}$p $serverid $msg
+    set hook handle$cmd
+    if {[hook exists $hook ne ""]} {
+        hook call $hook $serverid $msg
     } else {
-        addchantext $serverid "*" $line\n
+        hook call $hook handleUnknown $serverid $msg
     }
 }
 
-proc cmdSERVER {serverid arg} {
+hook append cmdSERVER irken {serverid arg} {
     if {! [dict exists $::config $arg]} {
         addchantext $::active "*" "$arg is not a server.\n" {} $::config
         return
     }
     connect $arg
 }
-proc cmdME {serverid arg} { sendmsg "\001ACTION $arg\001" }
-proc cmdJOIN {serverid arg} {
+hook append cmdME irken {serverid arg} { sendmsg "\001ACTION $arg\001" }
+hook append cmdJOIN irken {serverid arg} {
     set chanid [chanid $serverid $arg]
     ensurechan $chanid disabled
     .nav selection set $chanid
     send $serverid "JOIN :$arg"
 }
-proc cmdMSG {serverid arg} {
+hook append cmdMSG irken {serverid arg} {
     set target [lrange $arg 0 0]
     set text [lrange $arg 1 end]
     send $serverid "PRIVMSG $target :$text"
@@ -472,14 +499,14 @@ proc cmdMSG {serverid arg} {
     .nav selection set $chanid
     addchantext $chanid [dict get $::serverinfo $serverid nick] "$text\n" self
 }
-proc cmdEVAL {serverid arg} {
+hook append cmdEVAL irken {serverid arg} {
     addchantext $::active "*" "$arg -> [eval $arg]\n" italic
 }
 
 proc docmd {serverid chan cmd arg} {
-    set p [info procs "cmd[string toupper $cmd]"]
-    if {$p ne ""} {
-        {*}$p $serverid $arg
+    set hook "cmd[string toupper $cmd]"
+    if {[hook exists $hook]} {
+        hook call $hook $serverid $arg
     } else {
         send $serverid "$cmd $arg"
         return
