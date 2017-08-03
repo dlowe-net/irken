@@ -198,6 +198,9 @@ proc remchanuser {chanid user} {
     if {$idx != -1} {
         set users [lreplace $users $idx $idx]
         dict set ::channelinfo $chanid users $users
+        if {$chanid eq $::active} {
+            .users delete $user
+        }
     }
 }
 
