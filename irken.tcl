@@ -316,6 +316,9 @@ proc connected {fd} {
     set serverid [dict get $::servers $fd]
     .nav tag remove disabled $serverid
     addchantext $serverid "*" "Connected.\n" italic
+    if {[dict exists $::config $serverid -pass]} {
+        send $serverid "PASS [dict get $::config $serverid -pass]"
+    }
     send $serverid "NICK [dict get $::config $serverid -nick]"
     send $serverid "USER [dict get $::config $serverid -user] 0 * :Irken user"
 }
