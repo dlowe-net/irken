@@ -151,12 +151,8 @@ proc history {op} {
     set idx $oldidx
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
-        "up" {
-            set idx [expr {$idx eq {} ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]
-        }
-        "down" {
-            set idx [expr {$idx eq {} || $idx == 0 ? "" : $idx - 1}]
-        }
+        "up" {set idx [expr {$idx eq {} ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]}
+        "down" {set idx [expr {$idx eq {} || $idx == 0 ? "" : $idx - 1}]}
     }
     if {$idx eq $oldidx} {
         return
@@ -374,14 +370,11 @@ hook append handlePING irken {serverid msg} {send $serverid "PONG :[dict get $ms
 hook append handleJOIN irken {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
+    ensurechan $chanid {}
     addchanuser $chanid [dict get $msg src]
     if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
         # I joined
-        if [dict exists $::channelinfo $chanid] {
-            .nav tag remove disabled $chanid
-        } else {
-            ensurechan $chanid {}
-        }
+        .nav tag remove disabled $chanid
     } else {
         # Someone else joined
         addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
