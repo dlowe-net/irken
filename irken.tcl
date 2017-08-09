@@ -61,6 +61,8 @@ set ::channelinfo {}
 # ::active is the chanid of the shown channel.
 set ::active {}
 
+set ::nickprefixes "@%+&~"
+
 # interface setup
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
 set font "Monospace 10"
@@ -90,9 +92,11 @@ ttk::frame .cmdline
 ttk::label .nick -padding 3
 ttk::entry .cmd -validatecommand {historybreak} -font $font
 ttk::treeview .users -show tree -selectmode browse
-.users tag config ops -font $font -foreground red
-.users tag config voice -font $font -foreground blue
-.users tag config user -font $font
+.users tag config ops -foreground red
+.users tag config halfops -foreground pink
+.users tag config admin -foreground orange
+.users tag config voice -foreground blue
+.users tag config quiet -foreground gray
 .users column "#0" -width 140
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
 pack .nav -in .navframe -fill both -expand 1
@@ -166,35 +170,54 @@ proc history {op} {
     .cmd configure -validate key
 }
 
-proc usertags {user} {
-    switch -- [string range $user 0 0] {
-        "@" {return ops}
-        "+" {return voice}
-        default {return user}
-    }
-}
-
+# users should be {nick modes}
 proc addchanuser {chanid user} {
+    set impliedmode {}
+    switch -- [string range $user 0 0] {
+        "@" {set impliedmode {ops}}
+        "%" {set impliedmode {halfops}}
+        "&" {set impliedmode {admin}}
+        "+" {set impliedmode {voice}}
+        "~" {set impliedmode {quiet}}
+    }
+    if {$impliedmode ne {}} {
+        set user [string range $user 1 end]
+    }
+    set userentry [list $user $impliedmode]
     set users {}
     if {[dict exists $::channelinfo $chanid users]} {
         set users [dict get $::channelinfo $chanid users]
     }
-    if {[lsearch -exact $users $user] != -1} {
-        return
+    if {[set pos [lsearch -index 0 $users $user]] != -1} {
+        if {$userentry eq [lindex $users $pos]} {
+            # exact match - same prefix with user
+            return
+        }
+        # update user prefix
+        set users [lreplace $users $pos $pos $userentry]
+        if {$chanid eq $::active} {
+            .users tag remove [lindex [lindex $users $pos] 1] $user
+            .users tag add $impliedmode $user
+        }
+    } else {
+        # entirely new user
+        lappend users $userentry
+        if {$chanid eq $::active} {
+            .users insert {} end -id $user -text $user -tag $impliedmode
+        }
     }
-    lappend users $user
     dict set ::channelinfo $chanid users [lsort $users]
     if {$chanid ne $::active} {
         return
     }
     updatechaninfo $chanid
-    .users insert {} end -id $user -text $user -tag [usertags $user]
     sorttreechildren .users {}
 }
 
 proc remchanuser {chanid user} {
+    set user [string trimleft $user $::nickprefixes]
     set users [dict get $::channelinfo $chanid users]
-    set idx [lsearch $users $user]
+    set idx [lsearch -index 0 $users $user]
     if {$idx != -1} {
         set users [lreplace $users $idx $idx]
         dict set ::channelinfo $chanid users $users
@@ -257,7 +280,7 @@ proc selectchan {} {
     if {[ischannel $chanid]} {
         if {![catch {dict get $::channelinfo $chanid users} users]} {
             foreach user $users {
-                .users insert {} end -id $user -text $user -tag [usertags $user]
+                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [lindex $user 1]
             }
         }
     }
@@ -369,7 +392,6 @@ hook append handle372 irken {serverid msg} {
     addchantext $serverid "*" "[dict get $msg trailing]\n" italic
 }
 hook append handle376 irken {serverid msg} {}
-hook append handlePING irken {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
 hook append handleJOIN irken {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
@@ -383,14 +405,41 @@ hook append handleJOIN irken {serverid msg} {
         addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
     }
 }
-hook append handleQUIT irken {serverid msg} {
-    foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
-        if {[lsearch [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
-            remchanuser $chanid [dict get $msg src]
-            if {[dict exists $msg trailing]} {
-                addchantext $chanid "*" "[dict get $msg src] has quit ([dict get $msg trailing])\n" italic
-            } else {
-                addchantext $chanid "*" "[dict get $msg src] has quit\n" italic
+hook append handleMODE irken {serverid msg} {
+    set target [lindex [dict get $msg args] 0]
+    set chanid [chanid $serverid $target]
+    set change [lindex [dict get $msg args] 1]
+    set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
+    if {[lsearch [dict get $msg src] "!"] == -1} {
+        addchantext $msgdest "*" "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" italic
+    } else {
+        addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" italic
+    }
+    if {[ischannel $chanid]} {
+        switch -- $change {
+            "-o" {
+                # take ops
+                set oper [lindex [dict get $msg args] 2]
+                remchanuser [chanid $serverid $target] $oper
+                addchanuser [chanid $serverid $target] $oper
+            }
+            "+o" {
+                # give ops
+                set oper [lindex [dict get $msg args] 2]
+                remchanuser [chanid $serverid $target] $oper
+                addchanuser [chanid $serverid $target] @$oper
+            }
+            "-v" {
+                # take voice
+                set oper [lindex [dict get $msg args] 2]
+                remchanuser [chanid $serverid $target] $oper
+                addchanuser [chanid $serverid $target] $oper
+            }
+            "+v" {
+                # give voice
+                set oper [lindex [dict get $msg args] 2]
+                remchanuser [chanid $serverid $target] oper
+                addchanuser [chanid $serverid $target] +$oper
             }
         }
     }
@@ -407,14 +456,9 @@ hook append handlePART irken {serverid msg} {
         addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
     }
 }
-hook append handleTOPIC irken {serverid msg} {
-    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-    set topic [dict get $msg trailing]
-    setchantopic $chanid $topic
-    addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" italic
-}
+hook append handlePING irken {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
 hook append handlePRIVMSG irken {serverid msg} {
-    set chan [lindex [dict get $msg args] 0]
+    set chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
     if {$chan eq [dict get $::serverinfo $serverid nick]} {
         # direct message - so chan is source, not target
         set chan [dict get $msg src]
@@ -432,6 +476,24 @@ hook append handlePRIVMSG irken {serverid msg} {
 }
 hook append handleNOTICE irken {serverid msg} {
     hook call handlePRIVMSG $serverid $msg
+}
+hook append handleQUIT irken {serverid msg} {
+    foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
+        if {[lsearch [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
+            remchanuser $chanid [dict get $msg src]
+            if {[dict exists $msg trailing]} {
+                addchantext $chanid "*" "[dict get $msg src] has quit ([dict get $msg trailing])\n" italic
+            } else {
+                addchantext $chanid "*" "[dict get $msg src] has quit\n" italic
+            }
+        }
+    }
+}
+hook append handleTOPIC irken {serverid msg} {
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+    set topic [dict get $msg trailing]
+    setchantopic $chanid $topic
+    addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" italic
 }
 hook append handleUnknown irken {serverid msg} {
     addchantext $serverid "*" $line\n
