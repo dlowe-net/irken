@@ -118,6 +118,17 @@ bind .cmd <Return> returnkey
 bind .cmd <Up> [list history up]
 bind .cmd <Down> [list history down]
 
+proc irctolower {str} {return [string map [list \[ \{ \] \} \\ \| \~ \^] [string tolower $str]]}
+proc ircstrcmp {a b} {return [string compare [irctolower $a] [irctolower $b]]}
+proc rankeduser {entry} {
+    if {[set rank [lsearch [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
+        set rank 9
+    }
+    return $rank[lindex $entry 0]
+}
+proc usercmp {a b} {
+    return [ircstrcmp [rankeduser $a] [rankeduser $b]]
+}
 proc sorttreechildren {window root} {
     set items [lsort [$window children $root]]
     $window detach $items
@@ -170,6 +181,21 @@ proc history {op} {
     .cmd configure -validate key
 }
 
+proc setchanusers {chanid users} {
+    set users [lsort -command usercmp $users]
+    dict set ::channelinfo $chanid users $users
+    if {$chanid ne $::active} {
+        return
+    }
+    updatechaninfo $chanid
+    set items [lmap $users x {lindex $x 0}]
+    $window detach $items
+    set count [llength $items]
+    for {set i 0} {$i < $count} {incr i} {
+        $window move [lindex $items $i] $root $i
+    }
+}
+
 # users should be {nick modes}
 proc addchanuser {chanid user} {
     set impliedmode {}
@@ -206,12 +232,7 @@ proc addchanuser {chanid user} {
             .users insert {} end -id $user -text $user -tag $impliedmode
         }
     }
-    dict set ::channelinfo $chanid users [lsort $users]
-    if {$chanid ne $::active} {
-        return
-    }
-    updatechaninfo $chanid
-    sorttreechildren .users {}
+    setchanusers $chanid $users
 }
 
 proc remchanuser {chanid user} {
