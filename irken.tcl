@@ -188,11 +188,11 @@ proc setchanusers {chanid users} {
         return
     }
     updatechaninfo $chanid
-    set items [lmap $users x {lindex $x 0}]
-    $window detach $items
+    set items [lmap x $users {lindex $x 0}]
+    .users detach $items
     set count [llength $items]
     for {set i 0} {$i < $count} {incr i} {
-        $window move [lindex $items $i] $root $i
+        .users move [lindex $items $i] $root $i
     }
 }
 
