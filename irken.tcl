@@ -193,7 +193,7 @@ proc setchanusers {chanid users} {
     .users detach $items
     set count [llength $items]
     for {set i 0} {$i < $count} {incr i} {
-        .users move [lindex $items $i] $root $i
+        .users move [lindex $items $i] {} $i
     }
 }
 
