@@ -73,11 +73,20 @@ set ::nickprefixes "@%+&~"
 
 # interface setup
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
-proc circle {color} {
-    set svg "<svg height=\"16\" width=\"16\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/></svg>"
+proc svg {height width paths} {
+    set svg "<svg height=\"$height\" width=\"$width\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
     return [image create photo -format png -data [exec -- convert -background none "svg:-" "png:-" | base64 <<$svg]]
 }
-ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List
+proc circle {color} {return [svg 16 16 "<circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/>"]}
+proc polygon {color sides} {
+    set angle [expr {2 * 3.14159 / $sides}]
+    for {set side 0} {$side < $sides} {incr side} {
+        lappend points [expr {5 * cos($angle * $side) + 6}],[expr {5 * sin($angle * $side) + 8}]
+    }
+    return [svg 16 16 "<polygon points=\"$points\" style=\"stroke:black;fill:$color\"/>"]
+}
+proc blankicon {} {return [svg 16 16 ""]}
+ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List -indent 3
 ttk::panedwindow .root -orient horizontal
 .root add [ttk::frame .navframe -width 170] -weight 0
 .root add [ttk::frame .mainframe -width 300 -height 300] -weight 1
@@ -108,10 +117,11 @@ ttk::label .nick -padding 3
 ttk::entry .cmd -validatecommand {historybreak} -font Irken.Fixed
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -foreground red -image [circle red]
-.users tag config halfops -foreground pink -image [circle pink]
-.users tag config admin -foreground orange -image [circle orange]
-.users tag config voice -foreground blue -image [circle blue]
-.users tag config quiet -foreground gray
+.users tag config halfops -foreground pink -image [polygon pink 5]
+.users tag config admin -foreground orange -image [polygon orange 3]
+.users tag config voice -foreground blue -image [polygon blue 4]
+.users tag config quiet -foreground gray -image [blankicon]
+.users tag config normal -foreground black -image [blankicon]
 .users column "#0" -width 140
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
 pack .nav -in .navframe -fill both -expand 1
@@ -213,7 +223,7 @@ proc setchanusers {chanid users} {
 
 # users should be {nick modes}
 proc addchanuser {chanid user} {
-    set impliedmode {}
+    set impliedmode {normal}
     switch -- [string range $user 0 0] {
         "@" {set impliedmode {ops}}
         "%" {set impliedmode {halfops}}
@@ -221,7 +231,7 @@ proc addchanuser {chanid user} {
         "+" {set impliedmode {voice}}
         "~" {set impliedmode {quiet}}
     }
-    if {$impliedmode ne {}} {
+    if {$impliedmode ne {normal}} {
         set user [string range $user 1 end]
     }
     set userentry [list $user $impliedmode]
