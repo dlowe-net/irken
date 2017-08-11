@@ -98,7 +98,7 @@ text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
            [expr {26 * [font measure Irken.Fixed 0]}] left]
 .t tag config nick -foreground steelblue
 .t tag config italic -font Irken.FixedItalic
-.t tag config self   -foreground darkgray
+.t tag config self   -foreground gray30
 .t tag config highlight  -foreground green
 .t tag config warning  -foreground red -font Irken.FixedItalic
 .t tag config hlink -foreground blue -underline 1
