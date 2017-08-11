@@ -67,6 +67,10 @@ set ::nickprefixes "@%+&~"
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
 set uifont "TkDefaultFont 10"
 set monospacefont "Cousine 10"
+proc circle {color} {
+    set svg "<svg height=\"16\" width=\"16\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/></svg>"
+    return [image create photo -format png -data [exec -- convert -background none "svg:-" "png:-" | base64 <<$svg]]
+}
 ttk::panedwindow .root -orient horizontal
 .root add [ttk::frame .navframe -width 170] -weight 0
 .root add [ttk::frame .mainframe -width 300 -height 300] -weight 1
@@ -93,10 +97,10 @@ ttk::frame .cmdline
 ttk::label .nick -padding 3
 ttk::entry .cmd -validatecommand {historybreak} -font $monospacefont
 ttk::treeview .users -show tree -selectmode browse
-.users tag config ops -foreground red
-.users tag config halfops -foreground pink
-.users tag config admin -foreground orange
-.users tag config voice -foreground blue
+.users tag config ops -foreground red -image [circle red]
+.users tag config halfops -foreground pink -image [circle pink]
+.users tag config admin -foreground orange -image [circle orange]
+.users tag config voice -foreground blue -image [circle blue]
 .users tag config quiet -foreground gray
 .users column "#0" -width 140
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
