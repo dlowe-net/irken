@@ -35,6 +35,14 @@ proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
 proc ischannel {chanid} {regexp -- {^[&#+!][^ ,\a]{0,49}$} [channelpart $chanid]}
 
+# Set up fonts ahead of time so they can be configured
+font create Irken.List {*}[font actual TkDefaultFont]
+font configure Irken.List -size 10
+font create Irken.Fixed {*}[font actual TkFixedFont]
+font configure Irken.Fixed -size 10
+font create Irken.FixedItalic {*}[font actual Irken.Fixed]
+font configure Irken.FixedItalic -slant italic
+
 # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
 set ::config {}
 set configpath $::env(HOME)/.config/irken/config.tcl
@@ -65,12 +73,11 @@ set ::nickprefixes "@%+&~"
 
 # interface setup
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
-set uifont "TkDefaultFont 10"
-set monospacefont "Cousine 10"
 proc circle {color} {
     set svg "<svg height=\"16\" width=\"16\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/></svg>"
     return [image create photo -format png -data [exec -- convert -background none "svg:-" "png:-" | base64 <<$svg]]
 }
+ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List
 ttk::panedwindow .root -orient horizontal
 .root add [ttk::frame .navframe -width 170] -weight 0
 .root add [ttk::frame .mainframe -width 300 -height 300] -weight 1
@@ -78,24 +85,27 @@ ttk::panedwindow .root -orient horizontal
 ttk::treeview .nav -show tree -selectmode browse
 bind .nav <<TreeviewSelect>> selectchan
 .nav column "#0" -width 150
-.nav tag config server -font $uifont -image [icon "/usr/share/icons/Humanity/apps/22/gnome-network-properties.svg"]
-.nav tag config channel -font $uifont -image [icon "/usr/share/icons/Humanity/apps/22/system-users.svg"]
-.nav tag config direct -font $uifont -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
+.nav tag config server -image [icon "/usr/share/icons/Humanity/apps/22/gnome-network-properties.svg"]
+.nav tag config channel -image [icon "/usr/share/icons/Humanity/apps/22/system-users.svg"]
+.nav tag config direct -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
 .nav tag config disabled -foreground gray
 .nav tag config highlight -foreground green
 .nav tag config unread -foreground orange
-ttk::entry .topic -takefocus 0 -font $monospacefont
-text .t -height 30 -wrap word -font $monospacefont -state disabled -tabs "[expr {25 * [font measure $monospacefont 0]}] right [expr {26 * [font measure $monospacefont 0]}] left"
-.t tag config nick   -font $monospacefont -foreground steelblue
-.t tag config italic -font "$monospacefont italic"
+ttk::entry .topic -takefocus 0 -font Irken.Fixed
+text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
+    -tabs [list \
+           [expr {25 * [font measure Irken.Fixed 0]}] right \
+           [expr {26 * [font measure Irken.Fixed 0]}] left]
+.t tag config nick -foreground steelblue
+.t tag config italic -font Irken.FixedItalic
 .t tag config self   -foreground darkgray
 .t tag config highlight  -foreground green
-.t tag config warning  -foreground red -font "$monospacefont italic"
+.t tag config warning  -foreground red -font Irken.FixedItalic
 .t tag config hlink -foreground blue -underline 1
 .t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
 ttk::frame .cmdline
 ttk::label .nick -padding 3
-ttk::entry .cmd -validatecommand {historybreak} -font $monospacefont
+ttk::entry .cmd -validatecommand {historybreak} -font Irken.Fixed
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -foreground red -image [circle red]
 .users tag config halfops -foreground pink -image [circle pink]
