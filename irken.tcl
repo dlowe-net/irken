@@ -406,6 +406,16 @@ hook append handle001 irken {serverid msg} {
         send $serverid "JOIN $chan"
     }
 }
+hook append handle301 irken {serverid msg} {
+    lassign [dict get $msg args] nick awaymsg
+    addchantext [chanid $serverid $nick] "*" "$nick is away: $awaymsg\n" italic
+}
+hook append handle305 irken {serverid msg} {
+    addchantext $::active "*" "You are no longer marked as being away.\n" italic
+}
+hook append handle306 irken {serverid msg} {
+    addchantext $::active "*" "You have been marked as being away.\n" italic
+}
 hook append handle331 irken {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     setchantopic $chanid ""
