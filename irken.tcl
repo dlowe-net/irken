@@ -274,7 +274,7 @@ proc remchanuser {chanid user} {
 }
 
 proc addchantext {chanid nick text args} {
-    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick $args"
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
     set textstart 0
     if {[regexp -all -indices {https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} $text match] != 0} {
         foreach {start end} $match {
