@@ -512,6 +512,20 @@ hook append handlePART irken {serverid msg} {
         addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
     }
 }
+hook append handleKICK irken {serverid msg} {
+    lassign [dict get $msg args] chan target note
+    if {$note ne {}} {
+        set note " ($note)"
+    }
+    set chanid [chanid $serverid $chan]
+    remchanuser $chanid $target
+    if {[dict get $::serverinfo $serverid nick] eq $target} {
+        .nav tag add disabled $chanid
+        addchantext $chanid "*" "[dict get $msg src] kicks you from $chan.$note\n" italic
+    } else {
+        addchantext $chanid "*" "[dict get $msg src] kicks $target from $chan.$note\n" italic
+    }
+}
 hook append handlePING irken {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
 hook append handlePRIVMSG irken {serverid msg} {
     set chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
