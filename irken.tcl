@@ -647,7 +647,7 @@ proc docmd {serverid chan cmd arg} {
 }
 
 proc sendmsg {serverid chan text} {
-    if {![ischannel $::active]} {
+    if {[channelpart $::active] eq ""} {
         addchantext $::active "*" "This isn't a channel.\n"
         return
     }
