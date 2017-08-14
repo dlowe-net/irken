@@ -124,6 +124,7 @@ ttk::treeview .users -show tree -selectmode browse
 .users tag config quiet -foreground gray -image [blankicon]
 .users tag config normal -foreground black -image [blankicon]
 .users column "#0" -width 140
+bind .users <Double-Button-1> {userclick}
 ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
 pack .nav -in .navframe -fill both -expand 1
 pack .topic -in .mainframe -side top -fill x
@@ -272,6 +273,13 @@ proc remchanuser {chanid user} {
             .users delete $user
         }
     }
+}
+
+proc userclick {} {
+    set user [.users selection]
+    set chanid [chanid [serverpart $::active] $user]
+    ensurechan $chanid {}
+    .nav selection set $chanid
 }
 
 proc addchantext {chanid nick text args} {
