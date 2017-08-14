@@ -4,6 +4,7 @@ if {[catch {package require tls} cerr]} {
     puts stderr "Could not load TLS library.  Please run: sudo apt install tcl-tls"
     exit 1
 }
+tls::init -tls1 true -ssl2 false -ssl3 false
 
 # Hooks
 set ::hooks [dict create]
