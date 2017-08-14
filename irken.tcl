@@ -23,7 +23,7 @@ proc hook {op name args} {
                 dict set ::hooks $name [lreplace $hook $hookidx $hookidx $args]
             }
         }
-        "remove" {dict set ::hooks $name [lsearch -all -inline -not -index 0 $hook $hookname]}
+        "remove" {dict set ::hooks $name [lsearch -all -inline -not -index 0 $hook [lindex $args 0 0]]}
         "exists" {expr {$hook ne {}}}
         "clear" {dict set ::hooks $name {}}
         "call" {foreach hookproc $hook {apply [lrange $hookproc 1 2] {*}$args}}
