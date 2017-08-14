@@ -563,7 +563,7 @@ hook append handleNOTICE irken {serverid msg} {
 }
 hook append handleQUIT irken {serverid msg} {
     foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
-        if {[lsearch [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
+        if {[lsearch -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
             remchanuser $chanid [dict get $msg src]
             if {[dict exists $msg trailing]} {
                 addchantext $chanid "*" "[dict get $msg src] has quit ([dict get $msg trailing])\n" italic
