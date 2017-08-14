@@ -402,6 +402,9 @@ proc disconnected {fd} {
 }
 
 hook append handle001 irken {serverid msg} {
+    if {![dict exists $::config $serverid -autojoin]} {
+        return
+    }
     foreach chan [dict get $::config $serverid -autojoin] {
         ensurechan [chanid $serverid $chan] disabled
         send $serverid "JOIN $chan"
