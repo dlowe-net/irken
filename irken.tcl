@@ -618,7 +618,6 @@ hook append cmdMSG irken {serverid arg} {
 
     set chanid [chanid $serverid $target]
     ensurechan $chanid {}
-    .nav selection set $chanid
     addchantext $chanid [dict get $::serverinfo $serverid nick] "$text\n" self
 }
 hook append cmdEVAL irken {serverid arg} {
