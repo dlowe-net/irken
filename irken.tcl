@@ -74,18 +74,21 @@ proc init {} {
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
     set ::config {}
-    set configpath $::env(HOME)/.config/irken/config.tcl
-    file mkdir [file dirname $configpath]
+    set configdir $::env(HOME)/.config/irken/
+    file mkdir $configdir
     proc server {serverid args}  {dict set ::config $serverid $args}
-    if {![file exists $configpath]} {
-        if {[catch {open $configpath w} fp]} {
+    if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
+        if {[catch {open "$configdir/50irken.tcl" w} fp]} {
             puts stderr "Couldn't write default config.  Exiting."
             exit 1
         }
         puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -ssl true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
         close $fp
+    } else {
+        foreach configpath [lsort $configpaths] {
+            source $configpath
+        }
     }
-    source $configpath
 
     # ::servers is a dict keyed on fd containing the serverid
     set ::servers {}
