@@ -28,8 +28,8 @@ proc hook {op name args} {
         default {
             # remove existing hook, if any
             set hook {}
-            if {[dict exists $::hooks $name]} {
-                set hook [lsearch -all -inline -not -index 0 [dict get $::hooks $name] [lindex $args 0]]
+            if {[dict exists $::hooks $op]} {
+                set hook [lsearch -all -inline -not -index 0 [dict get $::hooks $op] $name]
             }
             # add it back and sort by priority
             dict set ::hooks $op [lsort -index 1 -integer [concat $hook [list [concat [list $name] $args]]]]
