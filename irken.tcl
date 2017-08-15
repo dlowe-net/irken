@@ -609,7 +609,10 @@ hook handlePART irken 50 {serverid msg} {
     remchanuser $chanid [dict get $msg src]
     if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
         # I parted
-        .nav tag add disabled $chanid
+        if {[dict exists $::channelinfo $chanid]} {
+            .nav tag add disabled $chanid
+            addchantext $chanid "*" "You have left $chan\n" italic
+        }
     } else {
         # Someone else parted
         addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
@@ -707,12 +710,25 @@ proc recv {fd} {
     }
 }
 
-hook cmdSERVER irken 50 {serverid arg} {
-    if {! [dict exists $::config $arg]} {
-        addchantext $::active "*" "$arg is not a server.\n" {} $::config
-        return
+hook cmdCLOSE irken 50 {serverid arg} {
+    set chanid [chanid $serverid [lindex $arg 0]]
+    if {![dict exists $::channelinfo $chanid]} {
+        addchantext $::active "*" "No such channel [lindex $arg 0]\n" italic
+        return -code break
     }
-    connect $arg
+    if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
+        send $serverid "PART [lindex $arg 0] :[lrange $arg 1 end]"
+    }
+    if {$::active eq $chanid} {
+        ttk::treeview::Keynav .nav down
+        if {$::active eq $chanid} {
+            ttk::treeview::Keynav .nav up
+        }
+    }
+    .nav delete $chanid
+}
+hook cmdEVAL irken 50 {serverid arg} {
+    addchantext $::active "*" "$arg -> [eval $arg]\n" italic
     return -code continue
 }
 hook cmdME irken 50 {serverid arg} { sendmsg $serverid [channelpart $::active]  "\001ACTION $arg\001"; return -code continue}
@@ -733,8 +749,23 @@ hook cmdMSG irken 50 {serverid arg} {
     addchantext $chanid [dict get $::serverinfo $serverid nick] "$text\n" self
     return -code continue
 }
-hook cmdEVAL irken 50 {serverid arg} {
-    addchantext $::active "*" "$arg -> [eval $arg]\n" italic
+hook cmdQUERY irken 50 {serverid arg} {
+    if {$arg eq ""} {
+        addchantext $::active "*" "Query: missing nick.\n" italic
+        return -code break
+    }
+    if {[ischannel $arg]} {
+        addchantext $::active "*" "Can't query a channel.\n" italic
+        return -code break
+    }
+    ensurechan [chanid $serverid $arg] {}
+}
+hook cmdSERVER irken 50 {serverid arg} {
+    if {! [dict exists $::config $arg]} {
+        addchantext $::active "*" "$arg is not a server.\n" {} $::config
+        return
+    }
+    connect $arg
     return -code continue
 }
 
