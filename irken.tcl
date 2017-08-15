@@ -54,6 +54,8 @@ proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
 proc ischannel {chanid} {regexp -- {^[&#+!][^ ,\a]{0,49}$} [channelpart $chanid]}
 
+proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
+
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
 proc svg {height width paths} {
     set svg "<svg height=\"$height\" width=\"$width\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
@@ -248,50 +250,47 @@ proc history {op} {
     }
     .cmd configure -validate key
 }
-
 proc tabcomplete {} {
     if {![ischannel $::active]} {
         return
     }
+    set user {}
     if {[dict exists $::channelinfo $::active tabprefix]} {
-        # go to next completion
-        set prefix [dict get $::channelinfo $::active tabprefix]
-        set lasttab [dict get $::channelinfo $::active lasttab]
-        set pos [lsearch -index 0 [dict get $::channelinfo $::active users] $lasttab]
+        set tabprefix [dict get $::channelinfo $::active tabprefix] ;# what the user typed in
+        set tablast [dict get $::channelinfo $::active tablast]     ;# last user found
+        set tabrange [dict get $::channelinfo $::active tabrange]   ;# start and end pos of text inserted
+        set pos [lsearch -index 0 [dict get $::channelinfo $::active users] $tablast]
         if {$pos != -1} {
-            # that user was found, now find next user matching prefix
-            set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
-            if {$user eq {}} {
-                # no next user
-                set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
-            }
-            if {$user eq {}} {
-                return -code break
-            }
-            .cmd configure -validate none
-            .cmd delete [expr {[.cmd index insert] - [string length $lasttab] - 2}] insert
-            .cmd insert insert "[lindex $user 0]: "
-            .cmd configure -validate key
-            dict set ::channelinfo $::active lasttab [lindex $user 0]
-            return -code break
+            set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
         }
-
-        # last user no longer exists, so search anew
     } else {
-        # grab word at point
         set s [.cmd get]
         set pt [.cmd index insert]
-        set prefix [string range $s [string wordstart $s $pt] [string wordend $s $pt]]
+        if {[string index $s $pt] eq " "} {
+            set pt [expr {$pt - 1}]
+            if {[string index $s $pt] eq " "} {
+                return -code break
+            }
+        }
+        set tabrange [list [string wordstart $s $pt] [string wordend $s $pt]]
+        set tabprefix [string trimright [string range $s {*}$tabrange]]
     }
-    set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
     if {$user eq {}} {
-        return -code break
+        set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
+        if {$user eq {}} {
+            return -code break
+        }
     }
-    .cmd delete [expr {[.cmd index insert] - [string length $prefix]}] insert
-    .cmd insert insert "[lindex $user 0]: "
+    set str [lindex $user 0]
+    if {[lindex $tabrange 0] == 0} {
+        set str "$str: "
+    }
+    .cmd delete {*}$tabrange
+    .cmd insert [lindex $tabrange 0] $str
     .cmd configure -validate none
-    dict set ::channelinfo $::active tabprefix $prefix
-    dict set ::channelinfo $::active lasttab [lindex $user 0]
+    dict set ::channelinfo $::active tabprefix $tabprefix
+    dict set ::channelinfo $::active tablast [lindex $user 0]
+    dict set ::channelinfo $::active tabrange [list [lindex $tabrange 0] [expr {[lindex $tabrange 0] + [string length $str]}]]
     .cmd configure -validate key
     return -code break
 }
