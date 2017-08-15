@@ -117,7 +117,7 @@ text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
 .t tag bind hlink <Leave> {.t configure -cursor xterm}
 ttk::frame .cmdline
 ttk::label .nick -padding 3
-ttk::entry .cmd -validatecommand {historybreak} -font Irken.Fixed
+ttk::entry .cmd -validate key -validatecommand {stopimplicitentry} -font Irken.Fixed
 ttk::treeview .users -show tree -selectmode browse
 .users tag config ops -foreground red -image [circle red]
 .users tag config halfops -foreground pink -image [polygon pink 5]
@@ -146,6 +146,7 @@ bind .topic <Return> setcurrenttopic
 bind .cmd <Return> returnkey
 bind .cmd <Up> [list history up]
 bind .cmd <Down> [list history down]
+bind .cmd <Tab> tabcomplete
 
 proc irctolower {str} {return [string map [list \[ \{ \] \} \\ \| \~ \^] [string tolower $str]]}
 proc ircstrcmp {a b} {return [string compare [irctolower $a] [irctolower $b]]}
@@ -185,8 +186,9 @@ proc updatechaninfo {chanid} {
     }
 }
 
-proc historybreak {} {
+proc stopimplicitentry {} {
     dict set ::channelinfo $::active historyidx {}
+    dict unset ::channelinfo $::active tabprefix
     return 1
 }
 
@@ -210,6 +212,52 @@ proc history {op} {
     .cmd configure -validate key
 }
 
+proc tabcomplete {} {
+    if {![ischannel $::active]} {
+        return
+    }
+    if {[dict exists $::channelinfo $::active tabprefix]} {
+        # go to next completion
+        set prefix [dict get $::channelinfo $::active tabprefix]
+        set lasttab [dict get $::channelinfo $::active lasttab]
+        set pos [lsearch -index 0 [dict get $::channelinfo $::active users] $lasttab]
+        if {$pos != -1} {
+            # that user was found, now find next user matching prefix
+            set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
+            if {$user eq {}} {
+                # no next user
+                set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
+            }
+            if {$user eq {}} {
+                return -code break
+            }
+            .cmd configure -validate none
+            .cmd delete [expr {[.cmd index insert] - [string length $lasttab] - 2}] insert
+            .cmd insert insert "[lindex $user 0]: "
+            .cmd configure -validate key
+            dict set ::channelinfo $::active lasttab [lindex $user 0]
+            return -code break
+        }
+
+        # last user no longer exists, so search anew
+    } else {
+        # grab word at point
+        set s [.cmd get]
+        set pt [.cmd index insert]
+        set prefix [string range $s [string wordstart $s $pt] [string wordend $s $pt]]
+    }
+    set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] $prefix*]
+    if {$user eq {}} {
+        return -code break
+    }
+    .cmd delete [expr {[.cmd index insert] - [string length $prefix]}] insert
+    .cmd insert insert "[lindex $user 0]: "
+    .cmd configure -validate none
+    dict set ::channelinfo $::active tabprefix $prefix
+    dict set ::channelinfo $::active lasttab [lindex $user 0]
+    .cmd configure -validate key
+    return -code break
+}
 proc setchanusers {chanid users} {
     set users [lsort -command usercmp $users]
     dict set ::channelinfo $chanid users $users
@@ -663,7 +711,7 @@ proc returnkey {} {
     }
     set msg [.cmd get]
     dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
-    historybreak
+    stopimplicitentry
     if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
         docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
     } else {
