@@ -227,14 +227,8 @@ proc setchanusers {chanid users} {
 
 # users should be {nick modes}
 proc addchanuser {chanid user} {
-    set impliedmode {normal}
-    switch -- [string range $user 0 0] {
-        "@" {set impliedmode {ops}}
-        "%" {set impliedmode {halfops}}
-        "&" {set impliedmode {admin}}
-        "+" {set impliedmode {voice}}
-        "~" {set impliedmode {quiet}}
-    }
+    set impliedmode [dict get {@ ops % halfops & admin + voice ~ quiet {} normal} \
+                     [regexp -inline -- {^[@%&+~]} $user]]
     if {$impliedmode ne {normal}} {
         set user [string range $user 1 end]
     }
