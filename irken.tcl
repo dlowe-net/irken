@@ -697,7 +697,7 @@ proc sendmsg {serverid chan text} {
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
     if [regexp {^\001ACTION (.+)\001} $text -> text] {
-        addchantext $::active "*" "[dict get $::serverinfo $serverid nick] $nick\n" self
+        addchantext $::active "*" "[dict get $::serverinfo $serverid nick] $text\n" self
     } else {
         addchantext $::active [dict get $::serverinfo $serverid nick] "$text\n" self
     }
