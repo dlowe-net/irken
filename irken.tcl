@@ -451,6 +451,18 @@ proc ensurechan {chanid tags} {
     sorttreechildren .nav $serverid
 }
 
+proc removechan {chanid} {
+    dict unset ::channeltext $chanid
+    dict unset ::channelinfo $chanid
+    if {$::active eq $chanid} {
+        ttk::treeview::Keynav .nav down
+        if {$::active eq $chanid} {
+            ttk::treeview::Keynav .nav up
+        }
+    }
+    .nav delete $chanid
+}
+
 proc connect {serverid} {
     set host [dict get $::config $serverid -host]
     set port [dict get $::config $serverid -port]
@@ -719,13 +731,7 @@ hook cmdCLOSE irken 50 {serverid arg} {
     if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
         send $serverid "PART [lindex $arg 0] :[lrange $arg 1 end]"
     }
-    if {$::active eq $chanid} {
-        ttk::treeview::Keynav .nav down
-        if {$::active eq $chanid} {
-            ttk::treeview::Keynav .nav up
-        }
-    }
-    .nav delete $chanid
+    removechan $chanid
 }
 hook cmdEVAL irken 50 {serverid arg} {
     addchantext $::active "*" "$arg -> [eval $arg]\n" italic
