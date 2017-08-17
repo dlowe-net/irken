@@ -310,13 +310,14 @@ proc setchanusers {chanid users} {
 }
 
 # users should be {nick modes}
-proc addchanuser {chanid user} {
+proc addchanuser {chanid user modes} {
     set impliedmode [dict get {@ ops % halfops & admin + voice ~ quiet {} normal} \
                      [regexp -inline -- {^[@%&+~]} $user]]
     if {$impliedmode ne {normal}} {
         set user [string range $user 1 end]
+        lappend modes $impliedmode
     }
-    set userentry [list $user $impliedmode]
+    set userentry [list $user $modes]
     set users {}
     if {[dict exists $::channelinfo $chanid users]} {
         set users [dict get $::channelinfo $chanid users]
@@ -330,13 +331,15 @@ proc addchanuser {chanid user} {
         set users [lreplace $users $pos $pos $userentry]
         if {$chanid eq $::active} {
             .users tag remove [lindex [lindex $users $pos] 1] $user
-            .users tag add $impliedmode $user
+            foreach mode $modes {
+                .users tag add $mode $user
+            }
         }
     } else {
         # entirely new user
         lappend users $userentry
         if {$chanid eq $::active} {
-            .users insert {} end -id $user -text $user -tag $impliedmode
+            .users insert {} end -id $user -text $user -tag $modes
         }
     }
     setchanusers $chanid $users
@@ -430,25 +433,28 @@ proc selectchan {} {
 }
 
 proc ensurechan {chanid tags} {
-    if {[dict exists $::channelinfo $chanid]} {
-        return
+    if {![dict exists $::channeltext $chanid]} {
+        dict set ::channeltext $chanid {}
     }
-    set serverid [serverpart $chanid]
-    set name [channelpart $chanid]
-    set tag {direct}
-    if {$name eq ""} {
-        set tag {server}
-    } elseif {[ischannel $chanid]} {
-        set tag {channel}
+    if {![dict exists $::channelinfo $chanid]} {
+        dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
     }
-    dict set ::channeltext $chanid {}
-    dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
-    if {$name eq {}} {
-        .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
-    } else {
-        .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+    if {![.nav exists $chanid]} {
+        set serverid [serverpart $chanid]
+        set name [channelpart $chanid]
+        set tag {direct}
+        if {$name eq ""} {
+            set tag {server}
+        } elseif {[ischannel $chanid]} {
+            set tag {channel}
+        }
+        if {$name eq {}} {
+            .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
+        } else {
+            .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+        }
+        sorttreechildren .nav $serverid
     }
-    sorttreechildren .nav $serverid
 }
 
 proc removechan {chanid} {
@@ -551,7 +557,7 @@ hook handle333 irken 50 {serverid msg} {
 hook handle353 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
     foreach user [dict get $msg trailing] {
-        addchanuser $chanid $user
+        addchanuser $chanid $user {}
     }
     return -code continue
 }
@@ -565,7 +571,7 @@ hook handleJOIN irken 50 {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     ensurechan $chanid {}
-    addchanuser $chanid [dict get $msg src]
+    addchanuser $chanid [dict get $msg src] {}
     if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
         # I joined
         .nav tag remove disabled $chanid
@@ -591,25 +597,25 @@ hook handleMODE irken 50 {serverid msg} {
                 # take ops
                 set oper [lindex [dict get $msg args] 2]
                 remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] $oper
+                addchanuser [chanid $serverid $target] $oper {}
             }
             "+o" {
                 # give ops
                 set oper [lindex [dict get $msg args] 2]
                 remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] @$oper
+                addchanuser [chanid $serverid $target] @$oper {}
             }
             "-v" {
                 # take voice
                 set oper [lindex [dict get $msg args] 2]
                 remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] $oper
+                addchanuser [chanid $serverid $target] $oper {}
             }
             "+v" {
                 # give voice
                 set oper [lindex [dict get $msg args] 2]
                 remchanuser [chanid $serverid $target] oper
-                addchanuser [chanid $serverid $target] +$oper
+                addchanuser [chanid $serverid $target] +$oper {}
             }
         }
     }
@@ -646,6 +652,41 @@ hook handleKICK irken 50 {serverid msg} {
     }
     return -code continue
 }
+hook handleNICK irken 50 {serverid msg} {
+    set oldnick [dict get $msg src]
+    set newnick [dict get $msg trailing]
+    foreach chanid [dict keys $::channelinfo] {
+        if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
+            continue
+        }
+        set user [lsearch -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
+        if {$user eq ""} {
+            continue
+        }
+        remchanuser $chanid $oldnick
+        addchanuser $chanid $newnick [lindex $user 1]
+        addchantext $chanid "*" "$oldnick is now known as $newnick\n" italic
+    }
+    set oldchanid [chanid $serverid $oldnick]
+    set newchanid [chanid $serverid $newnick]
+    if {[dict exists $::channelinfo $oldchanid] && ![dict exists $::channelinfo $newchanid]} {
+        dict set ::channelinfo $newchanid [dict get $::channelinfo $oldchanid]
+        dict set ::channeltext $newchanid [dict get $::channeltext $oldchanid]
+        dict unset ::channeltext $oldchanid
+        dict unset ::channelinfo $oldchanid
+        .nav insert $serverid [.nav index $oldchanid] -id $newchanid {*}[.nav item $oldchanid] -text $newnick
+        .nav delete $oldchanid
+        if {$::active eq $oldchanid} {
+            .nav selection set $newchanid
+        }
+        addchantext $newchanid "*" "$oldnick is now known as $newnick\n" italic
+    }
+    return -code continue
+}
+hook handleNOTICE irken 50 {serverid msg} {
+    hook call handlePRIVMSG $serverid $msg
+    return -code continue
+}
 hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"; return -code continue}
 hook handlePRIVMSG irken 50 {serverid msg} {
     set chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
@@ -663,10 +704,6 @@ hook handlePRIVMSG irken 50 {serverid msg} {
     } else {
         addchantext $chanid [dict get $msg src] "$text\n" $tag
     }
-    return -code continue
-}
-hook handleNOTICE irken 50 {serverid msg} {
-    hook call handlePRIVMSG $serverid $msg
     return -code continue
 }
 hook handleQUIT irken 50 {serverid msg} {
