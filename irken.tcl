@@ -789,7 +789,7 @@ proc recv {fd} {
     }
     gets $fd line
     set serverid [dict get $::servers $fd]
-    set line [string trimright $line]
+    set line [string trimright [encoding convertfrom utf-8 $line]]
     if {! [regexp {^(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*([^:]+)?(?::(.*))?} $line -> src user host cmd args trailing]} {
         .t insert end PARSE_ERROR:$line\n warning
         return
