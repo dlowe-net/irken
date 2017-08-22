@@ -175,7 +175,6 @@ proc init {} {
     bind .cmd <Down> [list history down]
     bind .cmd <Tab> tabcomplete
 
-
     # initialize
     dict for {serverid serverconf} $::config {
         ensurechan $serverid [list disabled]
@@ -227,13 +226,16 @@ proc updatechaninfo {chanid} {
 }
 
 proc stopimplicitentry {} {
-    dict set ::channelinfo $::active historyidx {}
+    dict unset ::channelinfo $::active historyidx
     dict unset ::channelinfo $::active tabprefix
     return 1
 }
 
 proc history {op} {
-    set oldidx [dict get $::channelinfo $::active historyidx]
+    set oldidx {}
+    if {[dict exists $::channelinfo $::active historyidx]} {
+        set oldidx [dict get $::channelinfo $::active historyidx]
+    }
     set idx $oldidx
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
@@ -466,6 +468,7 @@ proc removechan {chanid} {
             ttk::treeview::Keynav .nav up
         }
     }
+    selectchan
     .nav delete $chanid
 }
 
@@ -891,7 +894,6 @@ proc returnkey {} {
     }
     set msg [.cmd get]
     dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
-    stopimplicitentry
     if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
         docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
     } else {
