@@ -854,6 +854,10 @@ hook cmdQUERY irken 50 {serverid arg} {
     }
     ensurechan [chanid $serverid $arg] {}
 }
+hook cmdRELOAD irken 50 {serverid arg} {
+    source $::argv0
+    addchantext $::active "*" "Irken reloaded.\n" italic
+}
 hook cmdSERVER irken 50 {serverid arg} {
     if {! [dict exists $::config $arg]} {
         addchantext $::active "*" "$arg is not a server.\n" {} $::config
