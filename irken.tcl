@@ -151,7 +151,7 @@ proc init {} {
     .users tag config admin -foreground orange -image [polygon orange 3]
     .users tag config voice -foreground blue -image [polygon blue 4]
     .users tag config quiet -foreground gray -image [blankicon]
-    .users tag config normal -foreground black -image [blankicon]
+    .users tag config user -foreground black -image [blankicon]
     .users column "#0" -width 140
     bind .users <Double-Button-1> {userclick}
     ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
@@ -197,6 +197,7 @@ proc rankeduser {entry} {
     return $rank[lindex $entry 0]
 }
 proc usercmp {a b} {return [ircstrcmp [rankeduser $a] [rankeduser $b]]}
+proc isself {serverid nick} {return [expr {[ircstrcmp [dict get $::serverinfo $serverid nick] $nick] == 0}]}
 
 proc sorttreechildren {window root} {
     set items [lsort [$window children $root]]
@@ -311,9 +312,9 @@ proc setchanusers {chanid users} {
 
 # users should be {nick modes}
 proc addchanuser {chanid user modes} {
-    set impliedmode [dict get {@ ops % halfops & admin + voice ~ quiet {} normal} \
+    set impliedmode [dict get {@ ops % halfops & admin + voice ~ quiet {} {}} \
                      [regexp -inline -- {^[@%&+~]} $user]]
-    if {$impliedmode ne {normal}} {
+    if {$impliedmode ne {}} {
         set user [string range $user 1 end]
         lappend modes $impliedmode
     }
@@ -339,7 +340,7 @@ proc addchanuser {chanid user modes} {
         # entirely new user
         lappend users $userentry
         if {$chanid eq $::active} {
-            .users insert {} end -id $user -text $user -tag $modes
+            .users insert {} end -id $user -text $user -tag "$modes user"
         }
     }
     setchanusers $chanid $users
@@ -359,8 +360,7 @@ proc remchanuser {chanid user} {
 }
 
 proc userclick {} {
-    set user [.users selection]
-    set chanid [chanid [serverpart $::active] $user]
+    set chanid [chanid [serverpart $::active] [.users selection]]
     ensurechan $chanid {}
     .nav selection set $chanid
 }
@@ -418,7 +418,7 @@ proc selectchan {} {
     if {[ischannel $chanid]} {
         if {![catch {dict get $::channelinfo $chanid users} users]} {
             foreach user $users {
-                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [lindex $user 1]
+                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag "[lindex $user 1] user"
             }
         }
     }
@@ -572,12 +572,38 @@ hook handleJOIN irken 50 {serverid msg} {
     set chanid [chanid $serverid $chan]
     ensurechan $chanid {}
     addchanuser $chanid [dict get $msg src] {}
-    if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
-        # I joined
+    if {[isself $serverid [dict get $msg src]]} {
         .nav tag remove disabled $chanid
-    } else {
-        # Someone else joined
+    }
+    return -code continue
+}
+hook handleJOIN irken-display 75 {serverid msg} {
+    set chan [lindex [dict get $msg args] 0]
+    set chanid [chanid $serverid $chan]
+    if {![isself $serverid [dict get $msg src]]} {
         addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
+    }
+    return -code continue
+}
+hook handleKICK irken 50 {serverid msg} {
+    lassign [dict get $msg args] chan target
+    set chanid [chanid $serverid $chan]
+    remchanuser $chanid $target
+    if {[isself $serverid $target]} {
+        .nav tag add disabled $chanid
+    }
+    return -code continue
+}
+hook handleKICK irken-display 75 {serverid msg} {
+    lassign [dict get $msg args] chan target note
+    if {$note ne {}} {
+        set note " ($note)"
+    }
+    set chanid [chanid $serverid $chan]
+    if {[isself $serverid $target]} {
+        addchantext $chanid "*" "[dict get $msg src] kicks you from $chan.$note\n" italic
+    } else {
+        addchantext $chanid "*" "[dict get $msg src] kicks $target from $chan.$note\n" italic
     }
     return -code continue
 }
@@ -621,37 +647,6 @@ hook handleMODE irken 50 {serverid msg} {
     }
     return -code continue
 }
-hook handlePART irken 50 {serverid msg} {
-    set chan [lindex [dict get $msg args] 0]
-    set chanid [chanid $serverid $chan]
-    remchanuser $chanid [dict get $msg src]
-    if {[dict get $::serverinfo $serverid nick] eq [dict get $msg src]} {
-        # I parted
-        if {[dict exists $::channelinfo $chanid]} {
-            .nav tag add disabled $chanid
-            addchantext $chanid "*" "You have left $chan\n" italic
-        }
-    } else {
-        # Someone else parted
-        addchantext $chanid "*" "[dict get $msg src] has left $chan\n" italic
-    }
-    return -code continue
-}
-hook handleKICK irken 50 {serverid msg} {
-    lassign [dict get $msg args] chan target note
-    if {$note ne {}} {
-        set note " ($note)"
-    }
-    set chanid [chanid $serverid $chan]
-    remchanuser $chanid $target
-    if {[dict get $::serverinfo $serverid nick] eq $target} {
-        .nav tag add disabled $chanid
-        addchantext $chanid "*" "[dict get $msg src] kicks you from $chan.$note\n" italic
-    } else {
-        addchantext $chanid "*" "[dict get $msg src] kicks $target from $chan.$note\n" italic
-    }
-    return -code continue
-}
 hook handleNICK irken 50 {serverid msg} {
     set oldnick [dict get $msg src]
     set newnick [dict get $msg trailing]
@@ -665,7 +660,6 @@ hook handleNICK irken 50 {serverid msg} {
         }
         remchanuser $chanid $oldnick
         addchanuser $chanid $newnick [lindex $user 1]
-        addchantext $chanid "*" "$oldnick is now known as $newnick\n" italic
     }
     set oldchanid [chanid $serverid $oldnick]
     set newchanid [chanid $serverid $newnick]
@@ -679,6 +673,24 @@ hook handleNICK irken 50 {serverid msg} {
         if {$::active eq $oldchanid} {
             .nav selection set $newchanid
         }
+    }
+    return -code continue
+}
+hook handleNICK irken-display 75 {serverid msg} {
+    set oldnick [dict get $msg src]
+    set newnick [dict get $msg trailing]
+    foreach chanid [dict keys $::channelinfo] {
+        if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
+            continue
+        }
+        set user [lsearch -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
+        if {$user eq ""} {
+            continue
+        }
+        addchantext $chanid "*" "$oldnick is now known as $newnick\n" italic
+    }
+    set newchanid [chanid $serverid $newnick]
+    if {[dict exists $::channelinfo $newchanid]} {
         addchantext $newchanid "*" "$oldnick is now known as $newnick\n" italic
     }
     return -code continue
@@ -687,10 +699,36 @@ hook handleNOTICE irken 50 {serverid msg} {
     hook call handlePRIVMSG $serverid $msg
     return -code continue
 }
+hook handlePART irken 50 {serverid msg} {
+    set chan [lindex [dict get $msg args] 0]
+    set chanid [chanid $serverid $chan]
+    remchanuser $chanid [dict get $msg src]
+    if {[isself $serverid [dict get $msg src]]} {
+        if {[dict exists $::channelinfo $chanid]} {
+            .nav tag add disabled $chanid
+        }
+    }
+    return -code continue
+}
+hook handlePART irken-display 75 {serverid msg} {
+    lassign [dict get $msg args] chan note
+    if {$note ne {}} {
+        set note " ($note)"
+    }
+    set chanid [chanid $serverid $chan]
+    if {[isself $serverid [dict get $msg src]]} {
+        if {[dict exists $::channelinfo $chanid]} {
+            addchantext $chanid "*" "You have left $chan.$note\n" italic
+        }
+    } else {
+        addchantext $chanid "*" "[dict get $msg src] has left $chan.$note\n" italic
+    }
+    return -code continue
+}
 hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"; return -code continue}
 hook handlePRIVMSG irken 50 {serverid msg} {
     set chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
-    if {$chan eq [dict get $::serverinfo $serverid nick]} {
+    if {[isself $serverid $chan]} {
         # direct message - so chan is source, not target
         set chan [dict get $msg src]
     }
@@ -707,15 +745,25 @@ hook handlePRIVMSG irken 50 {serverid msg} {
     return -code continue
 }
 hook handleQUIT irken 50 {serverid msg} {
+    set affectedchans {}
     foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
         if {[lsearch -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
             remchanuser $chanid [dict get $msg src]
-            if {[dict exists $msg trailing]} {
-                addchantext $chanid "*" "[dict get $msg src] has quit ([dict get $msg trailing])\n" italic
-            } else {
-                addchantext $chanid "*" "[dict get $msg src] has quit\n" italic
-            }
+            lappend affectedchans $chanid
         }
+    }
+    # The user isn't going to be in the channels, so a message with
+    # annotation for the display hook.
+    dict set msg affectedchans $affectedchans
+    return [list $serverid $msg]
+}
+hook handleQUIT irken-display 75 {serverid msg} {
+    set note {}
+    if {[dict exists $msg trailing]} {
+        set note " ([dict get $msg trailing])"
+    }
+    foreach chanid [dict get $msg affectedchans] {
+        addchantext $chanid "*" "[dict get $msg src] has quit$note\n" italic
     }
     return -code continue
 }
