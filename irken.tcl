@@ -149,6 +149,7 @@ proc init {} {
     .nav tag config disabled -foreground gray
     .nav tag config highlight -foreground green
     .nav tag config unread -foreground orange
+    .nav tag config note -foreground blue
     ttk::entry .topic -takefocus 0 -font Irken.Fixed
     text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
         -tabs [list \
@@ -403,6 +404,8 @@ proc addchantext {chanid nick text args} {
     if {$chanid ne $::active} {
         if {[lsearch $args highlight] != -1} {
             .nav tag add highlight $chanid
+        } elseif {$nick eq "*"} {
+            .nav tag add note $chanid
         } else {
             .nav tag add unread $chanid
         }
@@ -425,6 +428,7 @@ proc selectchan {} {
     .nav focus $chanid
     .nav tag remove unread $chanid
     .nav tag remove highlight $chanid
+    .nav tag remove note $chanid
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
