@@ -57,8 +57,8 @@ proc ischannel {chanid} {regexp -- {^[&#+!][^ ,\a]{0,49}$} [channelpart $chanid]
 proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
 proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
-proc svg {height width paths} {
-    set svg "<svg height=\"$height\" width=\"$width\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
+proc svg {width height paths} {
+    set svg "<svg width=\"$width\" height=\"$height\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
     return [image create photo -format png -data [exec -- convert -background none "svg:-" "png:-" | base64 <<$svg]]
 }
 proc circle {color} {return [svg 16 16 "<circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/>"]}
@@ -68,6 +68,26 @@ proc polygon {color sides} {
         lappend points [expr {5 * cos($angle * $side) + 6}],[expr {5 * sin($angle * $side) + 8}]
     }
     return [svg 16 16 "<polygon points=\"$points\" style=\"stroke:black;fill:$color\"/>"]
+}
+proc irkenicon {} {
+    set path {
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="50%" r="70%" fx="30%" fy="10%">
+      <stop offset="0%" style="stop-color:#ffd89b"/>
+      <stop offset="100%" style="stop-color:#efaa2f"/>
+    </radialGradient>
+    <filter id="shadow" x="0" y="0" width="100%" height="100%">
+      <feOffset result="offOut" in="SourceAlpha" dx="1" dy="1" />
+      <feGaussianBlur result="blurOut" in="offOut" stdDeviation="1" />
+      <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
+    </filter>
+  </defs>
+  <path
+      d="M16.104,16.206c-0.11,0-0.22-0.037-0.31-0.11l-5.175-4.208H0.491C0.22,11.888,0,11.666,0,11.395V0.883c0-0.271,0.22-0.491,0.491-0.491h15.613c0.271,0,0.491,0.219,0.491,0.491v10.512c0,0.271-0.22,0.493-0.491,0.493h-1.081l1.515,3.593c0.039,0.069,0.06,0.15,0.06,0.235c0,0.271-0.22,0.49-0.491,0.49C16.107,16.206,16.104,16.206,16.104,16.206z"
+      fill="url(#grad)"
+      filter="url(#shadow)"/>
+    }
+    return [svg 20 20 $path]
 }
 proc blankicon {} {return [svg 16 16 ""]}
 
@@ -114,6 +134,7 @@ proc init {} {
     set ::active {}
 
     # interface setup
+    wm iconphoto . [irkenicon]
     ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List -indent 3
     ttk::panedwindow .root -orient horizontal
     .root add [ttk::frame .navframe -width 170] -weight 0
