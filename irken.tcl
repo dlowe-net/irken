@@ -153,8 +153,8 @@ proc init {} {
     .nav tag config direct -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
     .nav tag config disabled -foreground gray
     .nav tag config highlight -foreground green
-    .nav tag config unread -foreground orange
-    .nav tag config note -foreground blue
+    .nav tag config message -foreground orange
+    .nav tag config unseen -foreground blue
     ttk::entry .topic -takefocus 0 -font Irken.Fixed
     text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
         -tabs [list \
@@ -196,6 +196,7 @@ proc init {} {
     bind . <Next> [list .t yview scroll 1 page]
     bind . <Control-Prior> [list ttk::treeview::Keynav .nav up]
     bind . <Control-Next> [list ttk::treeview::Keynav .nav down]
+    bind . <Control-space> {nexttaggedchannel}
     bind .topic <Return> setcurrenttopic
     bind .cmd <Return> returnkey
     bind .cmd <Up> [list history up]
@@ -395,6 +396,37 @@ proc userclick {} {
     .nav selection set $chanid
 }
 
+proc loopedtreenext {window item} {
+    set next [lindex [$window children $item] 0]
+    if {$next ne ""} {
+        return $next
+    }
+    set next [$window next $item]
+    if {$next ne ""} {
+        return $next
+    }
+    set next [$window next [$window parent $item]]
+    if {$next ne ""} {
+        return $next
+    }
+    # loop back to top
+    return [lindex [$window children {}] 0]
+}
+
+proc nexttaggedchannel {} {
+    set curchan [.nav selection]
+    set chan [loopedtreenext .nav $curchan]
+    while {$chan ne $curchan} {
+        if {[.nav tag has message $chan]} {
+            break
+        }
+        set chan [loopedtreenext .nav $chan]
+    }
+    if {$chan ne $curchan} {
+        .nav selection set $chan
+    }
+}
+
 proc addchantext {chanid nick text args} {
     lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
     set textstart 0
@@ -408,12 +440,12 @@ proc addchantext {chanid nick text args} {
     lappend newtext "[string range $text $textstart end]" $args
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
+        .nav tag add unseen $chanid
+        if {$nick ne "*"} {
+            .nav tag add message $chanid
+        }
         if {[lsearch $args highlight] != -1} {
             .nav tag add highlight $chanid
-        } elseif {$nick eq "*"} {
-            .nav tag add note $chanid
-        } else {
-            .nav tag add unread $chanid
         }
         return
     }
@@ -432,9 +464,9 @@ proc selectchan {} {
         return
     }
     .nav focus $chanid
-    .nav tag remove unread $chanid
+    .nav tag remove unseen $chanid
+    .nav tag remove message $chanid
     .nav tag remove highlight $chanid
-    .nav tag remove note $chanid
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
@@ -463,6 +495,7 @@ proc selectchan {} {
     }
 
     wm title . "Irken - $::active"
+    focus .cmd
 }
 
 proc ensurechan {chanid tags} {

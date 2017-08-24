@@ -88,6 +88,7 @@ next match.
 * `Return` - on topic line, sets the topic to whatever is in the text box
 * `Return` - on command line, either does the command or sends a message to the
   current channel.
+* `Control-space` - navigate to the next channel where there are unread messages.
 
 Plugins
 -------
