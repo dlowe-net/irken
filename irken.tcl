@@ -13,7 +13,7 @@ if {[catch {package require tls} cerr]} {
 # Defined hooks can return three ways:
 #   return -code continue : continue with normal processing
 #   return -code break : stop processing hook
-#   return <value> : replace hook parameter with the given value
+#   return <value> : replace hook parameter list with the given value
 if {![info exists ::hooks]} {
     set ::hooks [dict create]
 }
@@ -114,12 +114,17 @@ proc init {} {
             puts stderr "Couldn't write default config.  Exiting."
             exit 1
         }
-        puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -ssl true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
+        puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
         close $fp
     } else {
         foreach configpath [lsort $configpaths] {
             source $configpath
         }
+    }
+
+    if {$::config eq ""} {
+        puts stderr "Fatal error: no server entries were found in configuration.\n"
+        exit 1
     }
 
     # ::servers is a dict keyed on fd containing the serverid
@@ -211,6 +216,7 @@ proc init {} {
 
 proc irctolower {str} {return [string map [list \[ \{ \] \} \\ \| \~ \^] [string tolower $str]]}
 proc ircstrcmp {a b} {return [string compare [irctolower $a] [irctolower $b]]}
+proc irceq {a b} {return [expr {[ircstrcmp $a $b] == 0}]}
 proc rankeduser {entry} {
     if {[set rank [lsearch [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
         set rank 9
@@ -218,7 +224,7 @@ proc rankeduser {entry} {
     return $rank[lindex $entry 0]
 }
 proc usercmp {a b} {return [ircstrcmp [rankeduser $a] [rankeduser $b]]}
-proc isself {serverid nick} {return [expr {[ircstrcmp [dict get $::serverinfo $serverid nick] $nick] == 0}]}
+proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid nick] $nick]}
 
 proc sorttreechildren {window root} {
     set items [lsort [$window children $root]]
@@ -498,14 +504,24 @@ proc removechan {chanid} {
 }
 
 proc connect {serverid} {
-    set host [dict get $::config $serverid -host]
-    set port [dict get $::config $serverid -port]
-    addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
-    if [dict get $::config $serverid -ssl] {
-        set fd [tls::socket $host $port]
-    } else {
-        set fd [socket $host $port]
+    if {[catch {dict get $::config $serverid -host} host]} {
+        addchantext $serverid "*" "Fatal error: $serverid has no -host option $host.\n" italic
+        return
     }
+    if {![dict exists $::config $serverid -nick]} {
+        addchantext $serverid "*" "Fatal error: $serverid has no -nick option.\n" italic
+    }
+    if {![dict exists $::config $serverid -user]} {
+        addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" italic
+    }
+    if {[catch {dict get $::config $serverid -secure} secure]} {
+        set secure 0
+    }
+    if {[catch {dict get $::config $serverid -port} port]} {
+        set port [if {$secure} {expr 6667} {expr 6697}]
+    }
+    addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
+    set fd [if {$secure} {tls::socket $host $port} {socket $host $port}]
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
@@ -940,8 +956,6 @@ proc setcurrenttopic {} {
     focus .cmd
 }
 
-if {[info exists argv0] && [
-     file dirname [file normalize [info script]/...]] eq [
-    file dirname [file normalize $argv0/...]]} {
+if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
     init
 }
