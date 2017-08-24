@@ -8,8 +8,11 @@
 
 hook handlePRIVMSG ijchain 30 {serverid msg} {
     if {[dict get $msg src] eq "ijchain"} {
-        if {[regexp -- {^<([^>]+)> (.*)} [dict get $msg trailing] _ nick text]} {
+        if {[regexp -- {^<([^>]+)> (.*)} [dict get $msg trailing] -> nick text]} {
             return [list $serverid [dict replace $msg src *$nick trailing $text]]
+        }
+        if {[regexp -- {^\001ACTION ([^ ]+) (.*)\001} [dict get $msg trailing] -> nick text]} {
+            return [list $serverid [dict replace $msg src *$nick trailing "\001ACTION $text\001"]]
         }
     }
     return -code continue
