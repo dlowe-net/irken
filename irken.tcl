@@ -261,8 +261,8 @@ proc history {op} {
     set idx $oldidx
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
-        "up" {set idx [expr {$idx eq {} ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]}
-        "down" {set idx [expr {$idx eq {} || $idx == 0 ? "" : $idx - 1}]}
+        "up" {set idx [expr {$idx eq "" ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]}
+        "down" {set idx [expr {$idx eq "" || $idx == 0 ? "" : $idx - 1}]}
     }
     if {$idx eq $oldidx} {
         return
@@ -300,9 +300,9 @@ proc tabcomplete {} {
         set tabrange [list [string wordstart $s $pt] [string wordend $s $pt]]
         set tabprefix [string trimright [string range $s {*}$tabrange]]
     }
-    if {$user eq {}} {
+    if {$user eq ""} {
         set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
-        if {$user eq {}} {
+        if {$user eq ""} {
             return -code break
         }
     }
@@ -475,7 +475,7 @@ proc ensurechan {chanid tags} {
         } elseif {[ischannel $chanid]} {
             set tag {channel}
         }
-        if {$name eq {}} {
+        if {$name eq ""} {
             .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
         } else {
             .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
