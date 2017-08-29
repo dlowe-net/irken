@@ -97,12 +97,9 @@ proc init {} {
     tls::init -tls1 true -ssl2 false -ssl3 false
 
     # Set up fonts ahead of time so they can be configured
-    font create Irken.List {*}[font actual TkDefaultFont]
-    font configure Irken.List -size 10
-    font create Irken.Fixed {*}[font actual TkFixedFont]
-    font configure Irken.Fixed -size 10
-    font create Irken.FixedItalic {*}[font actual Irken.Fixed]
-    font configure Irken.FixedItalic -slant italic
+    font create Irken.List {*}[font actual TkDefaultFont] -size 10
+    font create Irken.Fixed {*}[font actual TkFixedFont] -size 10
+    font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
     set ::config {}
@@ -685,9 +682,8 @@ hook handleKICK irken-display 75 {serverid msg} {
     return -code continue
 }
 hook handleMODE irken 50 {serverid msg} {
-    set target [lindex [dict get $msg args] 0]
+    lassign [dict get $msg args] target change
     set chanid [chanid $serverid $target]
-    set change [lindex [dict get $msg args] 1]
     set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
     if {[lsearch [dict get $msg src] "!"] == -1} {
         addchantext $msgdest "*" "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" italic
