@@ -163,7 +163,7 @@ proc initui {} {
     .t tag config warning  -foreground red -font Irken.FixedItalic
     .t tag config hlink -foreground blue -underline 1
     .t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
-    .t tag bind hlink <Enter> {.t configure -cursor arrow}
+    .t tag bind hlink <Enter> {.t configure -cursor hand2}
     .t tag bind hlink <Leave> {.t configure -cursor xterm}
     ttk::frame .cmdline
     ttk::label .nick -padding 3
