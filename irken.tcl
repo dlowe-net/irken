@@ -262,7 +262,7 @@ proc updatechaninfo {chanid} {
 
 proc stopimplicitentry {} {
     dict unset ::channelinfo $::active historyidx
-    dict unset ::channelinfo $::active tabprefix
+    dict unset ::channelinfo $::active tab
     return 1
 }
 
@@ -293,13 +293,11 @@ proc tabcomplete {} {
         return
     }
     set user {}
-    if {[dict exists $::channelinfo $::active tabprefix]} {
-        set tabprefix [dict get $::channelinfo $::active tabprefix] ;# what the user typed in
-        set tablast [dict get $::channelinfo $::active tablast]     ;# last user found
-        set tabrange [dict get $::channelinfo $::active tabrange]   ;# start and end pos of text inserted
-        set pos [lsearch -exact -index 0 [dict get $::channelinfo $::active users] $tablast]
-        if {$pos != -1} {
-            set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
+    set userlist [dict get $::channelinfo $::active users]
+    if {[dict exists $::channelinfo $::active tab]} {
+        lassign [dict get $::channelinfo $::active tab] tabprefix tablast tabstart tabend
+        if {[set pos [lsearch -exact -index 0 $userlist $tablast]] != -1} {
+            set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob $userlist "[globescape $tabprefix]*"]
         }
     } else {
         set s [.cmd get]
@@ -310,26 +308,26 @@ proc tabcomplete {} {
                 return -code break
             }
         }
-        set tabrange [list [string wordstart $s $pt] [string wordend $s $pt]]
-        set tabprefix [string trimright [string range $s {*}$tabrange]]
+        set tabstart [string wordstart $s $pt]
+        set tabend [string wordend $s $pt]
+        set tabprefix [string trimright [string range $s $tabstart $tabend]]
     }
     if {$user eq ""} {
-        set user [lsearch -inline -nocase -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
+        set user [lsearch -inline -nocase -index 0 -glob $userlist "[globescape $tabprefix]*"]
         if {$user eq ""} {
             return -code break
         }
     }
     set str [lindex $user 0]
-    if {[lindex $tabrange 0] == 0} {
+    if {$tabstart == 0} {
         set str "$str: "
     }
-    .cmd delete {*}$tabrange
-    .cmd insert [lindex $tabrange 0] $str
     .cmd configure -validate none
-    dict set ::channelinfo $::active tabprefix $tabprefix
-    dict set ::channelinfo $::active tablast [lindex $user 0]
-    dict set ::channelinfo $::active tabrange [list [lindex $tabrange 0] [expr {[lindex $tabrange 0] + [string length $str]}]]
+    .cmd delete $tabstart $tabend
+    .cmd insert $tabstart $str
     .cmd configure -validate key
+    dict set ::channelinfo $::active tab \
+        [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
     return -code break
 }
 proc setchanusers {chanid users} {
