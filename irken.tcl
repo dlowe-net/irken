@@ -22,7 +22,7 @@ proc hook {op name args} {
         "exists" {return [expr {[dict exists $::hooks $name] && [dict get $::hooks $name] ne ""}]}
         "unset" {
             if {[dict exists $::hooks $name]} {
-                dict set ::hooks $name [lsearch -all -inline -not -index 0 [dict get $::hooks $name] [lindex $args 0]]
+                dict set ::hooks $name [lsearch -all -exact -inline -not -index 0 [dict get $::hooks $name] [lindex $args 0]]
             }
             return ""
         }
@@ -39,7 +39,7 @@ proc hook {op name args} {
             # remove existing hook, if any
             set hook {}
             if {[dict exists $::hooks $op]} {
-                set hook [lsearch -all -inline -not -index 0 [dict get $::hooks $op] $name]
+                set hook [lsearch -all -exact -inline -not -index 0 [dict get $::hooks $op] $name]
             }
             # add it back and sort by priority
             dict set ::hooks $op [lsort -index 1 -integer [concat $hook [list [concat [list $name] $args]]]]
@@ -93,37 +93,14 @@ proc blankicon {} {return [svg 16 16 ""]}
 
 set ::nickprefixes "@%+&~"
 
-proc init {} {
-    tls::init -tls1 true -ssl2 false -ssl3 false
-
+proc initvars {} {
     # Set up fonts ahead of time so they can be configured
-    font create Irken.List {*}[font actual TkDefaultFont] -size 10
-    font create Irken.Fixed {*}[font actual TkFixedFont] -size 10
-    font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic
+    catch {font create Irken.List {*}[font actual TkDefaultFont] -size 10}
+    catch {font create Irken.Fixed {*}[font actual TkFixedFont] -size 10}
+    catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
     set ::config {}
-    set configdir $::env(HOME)/.config/irken/
-    file mkdir $configdir
-    proc server {serverid args}  {dict set ::config $serverid $args}
-    if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
-        if {[catch {open "$configdir/50irken.tcl" w} fp]} {
-            puts stderr "Couldn't write default config.  Exiting."
-            exit 1
-        }
-        puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#tcl}}
-        close $fp
-    } else {
-        foreach configpath [lsort $configpaths] {
-            source $configpath
-        }
-    }
-
-    if {$::config eq ""} {
-        puts stderr "Fatal error: no server entries were found in configuration.\n"
-        exit 1
-    }
-
     # ::servers is a dict keyed on fd containing the serverid
     set ::servers {}
     # ::fds is a dict keyed on serverid containing the fd and current nick
@@ -134,7 +111,29 @@ proc init {} {
     set ::channelinfo {}
     # ::active is the chanid of the shown channel.
     set ::active {}
+}
 
+proc server {serverid args} {dict set ::config $serverid $args}
+
+proc loadconfig {} {
+    set config {}
+    set configdir $::env(HOME)/.config/irken/
+    file mkdir $configdir
+    if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
+        if {[catch {open "$configdir/50irken.tcl" w} fp]} {
+            puts stderr "Couldn't write default config.  Exiting."
+            exit 1
+        }
+        puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True}
+        close $fp
+        set configpaths [list "$configdir/50irken.tcl"]
+    }
+    foreach configpath [lsort $configpaths] {
+        source $configpath
+    }
+}
+
+proc initui {} {
     # interface setup
     wm iconphoto . [irkenicon]
     ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List -indent 3
@@ -200,23 +199,33 @@ proc init {} {
     bind .cmd <Down> [list history down]
     bind .cmd <Tab> tabcomplete
 
-    # initialize
     dict for {serverid serverconf} $::config {
         ensurechan $serverid [list disabled]
+    }
+    .nav selection set [lindex $::config 0]
+    focus .cmd
+}
+
+proc initnetwork {} {
+    if {$::config eq ""} {
+        puts stderr "Fatal error: no server entries were found in configuration.\n"
+        exit 1
+    }
+
+    tls::init -tls1 true -ssl2 false -ssl3 false
+
+    dict for {serverid serverconf} $::config {
         if {[dict get $serverconf -autoconnect]} {
             connect $serverid
         }
     }
-    # select first serverid by default
-    .nav selection set [lindex $::config 0]
-    focus .cmd
 }
 
 proc irctolower {str} {return [string map [list \[ \{ \] \} \\ \| \~ \^] [string tolower $str]]}
 proc ircstrcmp {a b} {return [string compare [irctolower $a] [irctolower $b]]}
 proc irceq {a b} {return [expr {[ircstrcmp $a $b] == 0}]}
 proc rankeduser {entry} {
-    if {[set rank [lsearch [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
+    if {[set rank [lsearch -exact [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
         set rank 9
     }
     return $rank[lindex $entry 0]
@@ -288,7 +297,7 @@ proc tabcomplete {} {
         set tabprefix [dict get $::channelinfo $::active tabprefix] ;# what the user typed in
         set tablast [dict get $::channelinfo $::active tablast]     ;# last user found
         set tabrange [dict get $::channelinfo $::active tabrange]   ;# start and end pos of text inserted
-        set pos [lsearch -index 0 [dict get $::channelinfo $::active users] $tablast]
+        set pos [lsearch -exact -index 0 [dict get $::channelinfo $::active users] $tablast]
         if {$pos != -1} {
             set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob [dict get $::channelinfo $::active users] "[globescape $tabprefix]*"]
         }
@@ -351,7 +360,7 @@ proc addchanuser {chanid user modes} {
     if {[dict exists $::channelinfo $chanid users]} {
         set users [dict get $::channelinfo $chanid users]
     }
-    if {[set pos [lsearch -index 0 $users $user]] != -1} {
+    if {[set pos [lsearch -exact -index 0 $users $user]] != -1} {
         if {$userentry eq [lindex $users $pos]} {
             # exact match - same prefix with user
             return
@@ -368,7 +377,7 @@ proc addchanuser {chanid user modes} {
         # entirely new user
         lappend users $userentry
         if {$chanid eq $::active} {
-            .users insert {} end -id $user -text $user -tag "$modes user"
+            .users insert {} end -id $user -text $user -tag [concat $modes [list "user"]]
         }
     }
     setchanusers $chanid $users
@@ -377,7 +386,7 @@ proc addchanuser {chanid user modes} {
 proc remchanuser {chanid user} {
     set user [string trimleft $user $::nickprefixes]
     set users [dict get $::channelinfo $chanid users]
-    set idx [lsearch -index 0 $users $user]
+    set idx [lsearch -exact -index 0 $users $user]
     if {$idx != -1} {
         set users [lreplace $users $idx $idx]
         dict set ::channelinfo $chanid users $users
@@ -441,7 +450,7 @@ proc addchantext {chanid nick text args} {
         if {$nick ne "*"} {
             .nav tag add message $chanid
         }
-        if {[lsearch $args highlight] != -1} {
+        if {[lsearch -exact $args highlight] != -1} {
             .nav tag add highlight $chanid
         }
         return
@@ -480,7 +489,7 @@ proc selectchan {} {
     if {[ischannel $chanid]} {
         if {![catch {dict get $::channelinfo $chanid users} users]} {
             foreach user $users {
-                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag "[lindex $user 1] user"
+                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [concat [lindex $user 1] "user"]
             }
         }
     }
@@ -685,7 +694,7 @@ hook handleMODE irken 50 {serverid msg} {
     lassign [dict get $msg args] target change
     set chanid [chanid $serverid $target]
     set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
-    if {[lsearch [dict get $msg src] "!"] == -1} {
+    if {[lsearch -exact [dict get $msg src] "!"] == -1} {
         addchantext $msgdest "*" "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" italic
     } else {
         addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" italic
@@ -727,7 +736,7 @@ hook handleNICK irken 50 {serverid msg} {
         if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
             continue
         }
-        set user [lsearch -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
+        set user [lsearch -exact -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
         if {$user eq ""} {
             continue
         }
@@ -756,7 +765,7 @@ hook handleNICK irken-display 75 {serverid msg} {
         if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
             continue
         }
-        set user [lsearch -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
+        set user [lsearch -exact -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
         if {$user eq ""} {
             continue
         }
@@ -819,8 +828,8 @@ hook handlePRIVMSG irken 50 {serverid msg} {
 }
 hook handleQUIT irken 50 {serverid msg} {
     set affectedchans {}
-    foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
-        if {[lsearch -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
+    foreach chanid [lsearch -all -exact -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
+        if {[lsearch -exact -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
             remchanuser $chanid [dict get $msg src]
             lappend affectedchans $chanid
         }
@@ -986,5 +995,8 @@ proc setcurrenttopic {} {
 }
 
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
-    init
+    initvars
+    loadconfig
+    initui
+    initnetwork
 }
