@@ -30,7 +30,7 @@ proc hook {op name args} {
             foreach hookproc [dict get $::hooks $name] {
                 try {
                     apply [lrange $hookproc 2 3] {*}$args
-                } on {ok} {val} {
+                } on ok {val} {
                     set args $val
                 }
             }
@@ -70,34 +70,18 @@ proc polygon {color sides} {
     return [svg 16 16 "<polygon points=\"$points\" style=\"stroke:black;fill:$color\"/>"]
 }
 proc irkenicon {} {
-    set path {
-  <defs>
-    <radialGradient id="grad" cx="50%" cy="50%" r="70%" fx="30%" fy="10%">
-      <stop offset="0%" style="stop-color:#ffd89b"/>
-      <stop offset="100%" style="stop-color:#efaa2f"/>
-    </radialGradient>
-    <filter id="shadow" x="0" y="0" width="100%" height="100%">
-      <feOffset result="offOut" in="SourceAlpha" dx="1" dy="1" />
-      <feGaussianBlur result="blurOut" in="offOut" stdDeviation="1" />
-      <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
-    </filter>
-  </defs>
-  <path
-      d="M16.104,16.206c-0.11,0-0.22-0.037-0.31-0.11l-5.175-4.208H0.491C0.22,11.888,0,11.666,0,11.395V0.883c0-0.271,0.22-0.491,0.491-0.491h15.613c0.271,0,0.491,0.219,0.491,0.491v10.512c0,0.271-0.22,0.493-0.491,0.493h-1.081l1.515,3.593c0.039,0.069,0.06,0.15,0.06,0.235c0,0.271-0.22,0.49-0.491,0.49C16.107,16.206,16.104,16.206,16.104,16.206z"
-      fill="url(#grad)"
-      filter="url(#shadow)"/>
-    }
-    return [svg 20 20 $path]
+    return [svg 20 20 {<path d="M16.104,16.206c-0.11,0-0.22-0.037-0.31-0.11l-5.175-4.208H0.491C0.22,11.888,0,11.666,0,11.395V0.883c0-0.271,0.22-0.491,0.491-0.491h15.613c0.271,0,0.491,0.219,0.491,0.491v10.512c0,0.271-0.22,0.493-0.491,0.493h-1.081l1.515,3.593c0.039,0.069,0.06,0.15,0.06,0.235c0,0.271-0.22,0.49-0.491,0.49C16.107,16.206,16.104,16.206,16.104,16.206z" fill="#ffd89b"/>}]
 }
 proc blankicon {} {return [svg 16 16 ""]}
 
 set ::nickprefixes "@%+&~"
+set ::codetagcolormap [dict create 0 white 1 black 2 navy 3 green 4 red 5 maroon 6 purple 7 olive 8 yellow 9 lgreen 10 teal 11 cyan 12 blue 13 magenta 14 gray 15 lgray {} {}]
+set ::tagcolormap [dict create white white black black navy navy green green red red maroon maroon purple purple olive {dark olive green} yellow gold lgreen {spring green} teal {pale turquoise} cyan cyan blue blue magenta magenta gray gray lgray {light grey} {} {}]
 
 proc initvars {} {
     # Set up fonts ahead of time so they can be configured
     catch {font create Irken.List {*}[font actual TkDefaultFont] -size 10}
     catch {font create Irken.Fixed {*}[font actual TkFixedFont] -size 10}
-    catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
     set ::config {}
@@ -134,7 +118,9 @@ proc loadconfig {} {
 }
 
 proc initui {} {
-    # interface setup
+    catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
+    catch {font create Irken.FixedBold {*}[font actual Irken.Fixed] -weight bold}
+    catch {font create Irken.FixedBoldItalic {*}[font actual Irken.Fixed] -weight bold -slant italic}
     wm iconphoto . [irkenicon]
     ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List -indent 3
     ttk::panedwindow .root -orient horizontal
@@ -161,6 +147,14 @@ proc initui {} {
     .t tag config self   -foreground gray30
     .t tag config highlight  -foreground green
     .t tag config warning  -foreground red -font Irken.FixedItalic
+    .t tag config italic -font Irken.FixedItalic
+    .t tag config bold -font Irken.FixedBold
+    .t tag config bolditalic -font Irken.FixedBoldItalic
+    .t tag config underline -underline 1
+    dict for {tagcolor color} $::tagcolormap {
+        .t tag config fg_$tagcolor -foreground $color
+        .t tag config bg_$tagcolor -background $color
+    }
     .t tag config hlink -foreground blue -underline 1
     .t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
     .t tag bind hlink <Enter> {.t configure -cursor hand2}
@@ -233,15 +227,6 @@ proc rankeduser {entry} {
 proc usercmp {a b} {return [ircstrcmp [rankeduser $a] [rankeduser $b]]}
 proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid nick] $nick]}
 
-proc sorttreechildren {window root} {
-    set items [lsort [$window children $root]]
-    $window detach $items
-    set count [llength $items]
-    for {set i 0} {$i < $count} {incr i} {
-        $window move [lindex $items $i] $root $i
-    }
-}
-
 proc setchantopic {chanid text} {
     dict set ::channelinfo $chanid topic $text
     if {$chanid eq $::active} {
@@ -251,13 +236,7 @@ proc setchantopic {chanid text} {
 }
 
 proc updatechaninfo {chanid} {
-    if {[ischannel $chanid]} {
-        set users {}
-        catch {dict get $::channelinfo $chanid users} users
-        .chaninfo configure -text "[llength $users] users"
-    } else {
-        .chaninfo configure -text {}
-    }
+    .chaninfo configure -text [expr {[ischannel $chanid] ? "[llength [dict get $::channelinfo $chanid users]] users":""}]
 }
 
 proc stopimplicitentry {} {
@@ -300,8 +279,7 @@ proc tabcomplete {} {
             set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob $userlist "[globescape $tabprefix]*"]
         }
     } else {
-        set s [.cmd get]
-        set pt [.cmd index insert]
+        lassign [list [.cmd get] [.cmd index insert]] s pt
         if {[string index $s $pt] eq " "} {
             set pt [expr {$pt - 1}]
             if {[string index $s $pt] eq " "} {
@@ -401,16 +379,13 @@ proc userclick {} {
 }
 
 proc loopedtreenext {window item} {
-    set next [lindex [$window children $item] 0]
-    if {$next ne ""} {
+    if {[set next [lindex [$window children $item] 0]] ne ""} {
         return $next
     }
-    set next [$window next $item]
-    if {$next ne ""} {
+    if {[set next [$window next $item]] ne ""} {
         return $next
     }
-    set next [$window next [$window parent $item]]
-    if {$next ne ""} {
+    if {[set next [$window next [$window parent $item]]] ne ""} {
         return $next
     }
     # loop back to top
@@ -431,17 +406,128 @@ proc nexttaggedchannel {} {
     }
 }
 
-proc addchantext {chanid nick text args} {
-    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
-    set textstart 0
-    if {[regexp -all -indices {https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} $text match] != 0} {
-        foreach {start end} $match {
-            lappend newtext [string range $text $textstart $start-1] $args
-            lappend newtext [string range $text $start $end] [concat hlink $args]
-            set textstart [expr {$end + 1}]
+proc tagcolorchange {pos prefix defaultcol oldcol newcol} {
+    if {$newcol eq ""} {
+        set newcol $defaultcol
+    }
+    if {$oldcol eq $newcol} {
+        return [list {} $oldcol]
+    }
+    set result {}
+    if {$oldcol ne $defaultcol} {
+        lappend result [list $pos pop [string cat $prefix _ $oldcol]]
+    }
+    if {$newcol ne $defaultcol} {
+        lappend result [list $pos push [string cat $prefix _ $newcol]]
+    }
+    return [list $result $newcol]
+}
+proc colorcode {text} {
+    lassign {0 "" "" 0 0 black white} pos bold italic underline reverse fg bg result tagranges
+    set rest $text
+    while {$rest ne ""} {
+        set c [string range $rest 0 0]
+        switch -- $c {
+            "\x02" {
+                if {[string cat $bold $italic] ne ""} {
+                    lappend tagranges [list $pos pop "$bold$italic"]
+                }
+                set bold [expr {$bold == "bold" ? "":"bold"}]
+                if {[string cat $bold $italic] ne ""} {
+                    lappend tagranges [list $pos push "$bold$italic"]
+                }
+            }
+            "\x1d" {
+                if {[string cat $bold $italic] ne ""} {
+                    lappend tagranges [list $pos pop "$bold$italic"]
+                }
+                set italic [expr {$italic == "italic" ? "":"italic"}]
+                if {[string cat $bold $italic] ne ""} {
+                    lappend tagranges [list $pos push "$bold$italic"]
+                }
+            }
+            "\x1f" {set underline [expr {!$underline}]; lappend tagranges [list $pos [expr {$underline ? "push" : "pop"}] underline]}
+            "\x0f" {
+                if {[string cat $bold $italic] ne ""} {lappend tagranges [list $pos pop "$bold$italic"]}
+                if {$underline} {lappend tagranges [list $pos pop underline]}
+                if {$fg ne "black"} {lappend tagranges [list $pos pop fg_$fg]}
+                if {$bg ne "white"} {lappend tagranges [list $pos pop bg_$bg]}
+                lassign {"" "" 0 0 black white} bold italic underline reverse fg bg
+            }
+            "\x03" {
+                set rest [string range $rest 1 end]
+                if {[regexp -- {^0*(\d*)(,0*(\d*))?} $rest match fgnum _ bgnum]} {
+                    set rest [string range $rest [string length $match] end]
+                    if {$reverse} {
+                        lassign [list $bgnum $fgnum] fgnum bgnum
+                    }
+                    lassign [tagcolorchange $pos "fg" "black" $fg [dict get $::codetagcolormap $fgnum]] newtags fg
+                    lappend tagranges {*}$newtags
+                    lassign [tagcolorchange $pos "bg" "white" $bg [dict get $::codetagcolormap $bgnum]] newtags bg
+                    lappend tagranges {*}$newtags
+                }
+                continue
+            }
+            "\x16" {
+                lassign [list [expr {!$reverse}] $fg $bg] reverse newbg newfg
+                lassign [tagcolorchange $pos "fg" "black" $fg $newfg] newtags fg
+                lappend tagranges {*}$newtags
+                lassign [tagcolorchange $pos "bg" "white" $fg $newbg] newtags bg
+                lappend tagranges {*}$newtags
+            }
+            default {
+                append result $c
+                incr pos
+            }
+        }
+        set rest [string range $rest 1 end]
+    }
+    return [list $result $tagranges]
+}
+
+proc regexranges {text args} {
+    set ranges {}
+    foreach regextag $args {
+        lassign $regextag regex tag
+        set start 0
+        while {[regexp -indices -start $start -- $regex $text match]} {
+            lappend ranges [list [lindex $match 0] push $tag] [list [expr {[lindex $match 1] + 1}] pop $tag]
+            set start [expr {[lindex $match 1] + 1}]
         }
     }
-    lappend newtext "[string range $text $textstart end]" $args
+    return $ranges
+}
+
+# returns text into window with tags determined by potentially
+# overlapping styles. The "delete" tag is handled specially and
+# removes the text.  Example:
+#   combinestyles "text" {0 push red} {2 pop red}
+proc combinestyles {text ranges} {
+    lassign {{} {} 0} result activetags textstart
+    foreach {rangetag} [lsort -index 0 -integer $ranges] {
+        lassign $rangetag pos op tag
+        if {$textstart < $pos} {
+            lappend result [string range $text $textstart $pos-1] $activetags
+        }
+        set textstart $pos
+        if {$op eq "push"} {
+            lappend activetags $tag
+        } else {
+            if {[set tagpos [lsearch $activetags $tag]] != -1} {
+                set activetags [lreplace $activetags $tagpos $tagpos]
+            }
+        }
+    }
+    lappend result [string range $text $textstart end] $activetags
+    return $result
+}
+
+proc addchantext {chanid nick text args} {
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
+    lassign [colorcode $text] text ranges
+    lappend ranges {*}[regexranges $text {{https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} hlink}]
+    lappend ranges {*}[lmap linetag $args {list 0 push $linetag}]
+    lappend newtext {*}[combinestyles $text $ranges]
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
         .nav tag add unseen $chanid
@@ -510,20 +596,19 @@ proc ensurechan {chanid tags} {
         dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
     }
     if {![.nav exists $chanid]} {
-        set serverid [serverpart $chanid]
-        set name [channelpart $chanid]
-        set tag {direct}
-        if {$name eq ""} {
-            set tag {server}
-        } elseif {[ischannel $chanid]} {
-            set tag {channel}
-        }
-        if {$name eq ""} {
+        lassign [list [serverpart $chanid] [channelpart $chanid] direct] serverid chan
+        set tag [expr {$chan eq "" ? "server":[ischannel $chanid] ? "channel":"direct"}]
+        if {$chan eq ""} {
             .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
         } else {
-            .nav insert $serverid end -id $chanid -text $name -tag [concat $tag $tags]
+            .nav insert $serverid end -id $chanid -text $chan -tag [concat $tag $tags]
         }
-        sorttreechildren .nav $serverid
+
+        set items [lsort [.nav children $serverid]]
+        .nav detach $items
+        for {set i 0} {$i < [llength $items]} {incr i} {
+            .nav move [lindex $items $i] $serverid $i
+        }
     }
 }
 
@@ -902,7 +987,7 @@ hook cmdEVAL irken 50 {serverid arg} {
     addchantext $::active "*" "$arg -> [eval $arg]\n" italic
     return -code continue
 }
-hook cmdME irken 50 {serverid arg} { sendmsg $serverid [channelpart $::active]  "\001ACTION $arg\001"; return -code continue}
+hook cmdME irken 50 {serverid arg} { sendmsg $serverid [channelpart $::active] "\001ACTION $arg\001"; return -code continue}
 hook cmdJOIN irken 50 {serverid arg} {
     set chanid [chanid $serverid $arg]
     ensurechan $chanid disabled

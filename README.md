@@ -19,6 +19,7 @@ Features
 - event hooks for easy customization
 - nick tab completion
 - command history
+- color and formatting
 
 Running
 -------
@@ -139,7 +140,6 @@ Make sure to look at the included plugins for inspiration!
 Planned
 -------
 
-- Support for color codes
 - remove channel button
 - proper MODE message handling
 - CAP awareness
