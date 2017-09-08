@@ -507,7 +507,7 @@ proc combinestyles {text ranges} {
 proc addchantext {chanid nick text args} {
     lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
     lassign [colorcode $text] text ranges
-    lappend ranges {*}[regexranges $text {{https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} hlink}]
+    lappend ranges {*}[regexranges $text {{https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink}]
     lappend ranges {*}[lmap linetag $args {list 0 push $linetag}]
     lappend newtext {*}[combinestyles $text $ranges]
     dict append ::channeltext $chanid " $newtext"
