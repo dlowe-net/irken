@@ -1,9 +1,9 @@
 #!/usr/bin/wish8.6
 # Irken - dlowe@dlowe.net
-if {[catch {package require tls} cerr]} {
-    puts stderr "Could not load TLS library.  Please run: sudo apt install tcl-tls"
-    exit 1
-}
+package require tls
+
+proc ::tcl::dict::get? {default args} {expr {[catch {dict get {*}$args} val] ? $default:$val}}
+namespace ensemble configure dict -map [dict merge [namespace ensemble configure dict -map] {get? ::tcl::dict::get?}]
 
 # Hooks
 #   hook <hook> <handle> <priority> <params> <code> - adds hook, sorted by priority
@@ -19,15 +19,13 @@ if {![info exists ::hooks]} {
 }
 proc hook {op name args} {
     switch -- $op {
-        "exists" {return [expr {[dict exists $::hooks $name] && [dict get $::hooks $name] ne ""}]}
+        "exists" {return [expr {[dict get? "" $::hooks $name] ne ""}]}
         "unset" {
-            if {[dict exists $::hooks $name]} {
-                dict set ::hooks $name [lsearch -all -exact -inline -not -index 0 [dict get $::hooks $name] [lindex $args 0]]
-            }
+            dict set ::hooks $name [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $name] [lindex $args 0]]
             return ""
         }
         "call" {
-            foreach hookproc [dict get $::hooks $name] {
+            foreach hookproc [dict get? {} $::hooks $name] {
                 switch -- [set code [catch {apply [lrange $hookproc 2 3] {*}$args} val]] {
                     2 {set args $val}
                     3 {break}
@@ -35,12 +33,7 @@ proc hook {op name args} {
             }
         }
         default {
-            # remove existing hook, if any
-            set hook {}
-            if {[dict exists $::hooks $op]} {
-                set hook [lsearch -all -exact -inline -not -index 0 [dict get $::hooks $op] $name]
-            }
-            # add it back and sort by priority
+            set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] $name]
             dict set ::hooks $op [lsort -index 1 -integer [concat $hook [list [concat [list $name] $args]]]]
             return $op
         }
@@ -142,7 +135,6 @@ proc initui {} {
                    [expr {25 * [font measure Irken.Fixed 0]}] right \
                    [expr {26 * [font measure Irken.Fixed 0]}] left]
     .t tag config nick -foreground steelblue
-    .t tag config italic -font Irken.FixedItalic
     .t tag config self   -foreground gray30
     .t tag config highlight  -foreground green
     .t tag config warning  -foreground red -font Irken.FixedItalic
@@ -208,7 +200,7 @@ proc initnetwork {} {
     tls::init -tls1 true -ssl2 false -ssl3 false
 
     dict for {serverid serverconf} $::config {
-        if {[dict get $serverconf -autoconnect]} {
+        if {[dict get? 0 $serverconf -autoconnect]} {
             connect $serverid
         }
     }
@@ -245,10 +237,7 @@ proc stopimplicitentry {} {
 }
 
 proc history {op} {
-    set oldidx {}
-    if {[dict exists $::channelinfo $::active historyidx]} {
-        set oldidx [dict get $::channelinfo $::active historyidx]
-    }
+    set oldidx [dict get? {} $::channelinfo $::active historyidx]
     set idx $oldidx
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
@@ -331,10 +320,7 @@ proc addchanuser {chanid user modes} {
         lappend modes $impliedmode
     }
     set userentry [list $user $modes]
-    set users {}
-    if {[dict exists $::channelinfo $chanid users]} {
-        set users [dict get $::channelinfo $chanid users]
-    }
+    set users [dict get $::channelinfo $chanid users]
     if {[set pos [lsearch -exact -index 0 $users $user]] != -1} {
         if {$userentry eq [lindex $users $pos]} {
             # exact match - same prefix with user
@@ -460,9 +446,9 @@ proc colorcode {text} {
                     if {$reverse} {
                         lassign [list $bgnum $fgnum] fgnum bgnum
                     }
-                    lassign [tagcolorchange $pos "fg" "black" $fg [dict get $::codetagcolormap $fgnum]] newtags fg
+                    lassign [tagcolorchange $pos "fg" "black" $fg [dict get? "black" $::codetagcolormap $fgnum]] newtags fg
                     lappend tagranges {*}$newtags
-                    lassign [tagcolorchange $pos "bg" "white" $bg [dict get $::codetagcolormap $bgnum]] newtags bg
+                    lassign [tagcolorchange $pos "bg" "white" $bg [dict get? "white" $::codetagcolormap $bgnum]] newtags bg
                     lappend tagranges {*}$newtags
                 }
                 continue
@@ -565,15 +551,11 @@ proc selectchan {} {
     }
     .t configure -state disabled
     .topic delete 0 end
-    if {![catch {dict get $::channelinfo $chanid topic} topic]} {
-        .topic insert 0 $topic
-    }
+    .topic insert 0 [dict get? "" $::channelinfo $chanid topic]
     .users delete [.users children {}]
     if {[ischannel $chanid]} {
-        if {![catch {dict get $::channelinfo $chanid users} users]} {
-            foreach user $users {
-                .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [concat [lindex $user 1] "user"]
-            }
+        foreach user [dict get? {} $::channelinfo $chanid users] {
+            .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [concat [lindex $user 1] "user"]
         }
     }
     updatechaninfo $chanid
@@ -635,12 +617,9 @@ proc connect {serverid} {
     if {![dict exists $::config $serverid -user]} {
         addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" italic
     }
-    if {[catch {dict get $::config $serverid -secure} secure]} {
-        set secure 0
-    }
-    if {[catch {dict get $::config $serverid -port} port]} {
-        set port [if {$secure} {expr 6667} {expr 6697}]
-    }
+    set secure [dict get? 0 $::config $serverid -secure]
+    set port [dict get? [expr {$secure ? 6697:6667}] $::config $serverid -port]
+
     addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
     set fd [if {$secure} {tls::socket $host $port} {socket $host $port}]
     fileevent $fd writable [list connected $fd]
@@ -804,7 +783,7 @@ hook handleMODE irken 50 {serverid msg} {
             "+v" {
                 # give voice
                 set oper [lindex [dict get $msg args] 2]
-                remchanuser [chanid $serverid $target] oper
+                remchanuser [chanid $serverid $target] $oper
                 addchanuser [chanid $serverid $target] +$oper {}
             }
         }
@@ -864,8 +843,7 @@ hook handleNOTICE irken 50 {serverid msg} {
     continue
 }
 hook handlePART irken 50 {serverid msg} {
-    set chan [lindex [dict get $msg args] 0]
-    set chanid [chanid $serverid $chan]
+    set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     remchanuser $chanid [dict get $msg src]
     if {[isself $serverid [dict get $msg src]]} {
         if {[dict exists $::channelinfo $chanid]} {
