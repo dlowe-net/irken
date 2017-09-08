@@ -35,41 +35,42 @@ hook handle001 ignore 10 {serverid msg} {
     if {[file exists $::ignoreconfpath]} {
         source $::ignoreconfpath
     }
+    return -code continue
 }
 
 hook handlePRIVMSG ignore 40 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        break
+        return -code break
     }
-    continue
+    return -code continue
 }
 
 hook handleNOTICE ignore 40 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        break
+        return -code break
     }
-    continue
+    return -code continue
 }
 
 hook handleJOIN ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        break
+        return -code break
     }
-    continue
+    return -code continue
 }
 
 hook handlePART ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        break
+        return -code break
     }
-    continue
+    return -code continue
 }
 
 hook handleQUIT ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        break
+        return -code break
     }
-    continue
+    return -code continue
 }
 
 hook cmdIGNORE ignore 50 {serverid arg} {
@@ -79,7 +80,7 @@ hook cmdIGNORE ignore 50 {serverid arg} {
         } else {
             addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
         }
-        continue
+        return -code continue
     }
     set targets [ignorenicks [split $arg " "]]
     if {$targets eq ""} {
@@ -88,7 +89,7 @@ hook cmdIGNORE ignore 50 {serverid arg} {
         addchantext $::active "*" "Added to ignore list: $targets\n" italic
         updateignoreconf
     }
-    continue
+    return -code continue
 }
 
 hook cmdUNIGNORE ignore 50 {serverid arg} {
@@ -98,7 +99,7 @@ hook cmdUNIGNORE ignore 50 {serverid arg} {
         } else {
             addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
         }
-        continue
+        return -code continue
     }
     set targets {}
     foreach nick [split $arg " "] {
@@ -113,5 +114,5 @@ hook cmdUNIGNORE ignore 50 {serverid arg} {
         addchantext $::active "*" "Removed from ignore list: $targets\n" italic
         updateignoreconf
     }
-    continue
+    return -code continue
 }

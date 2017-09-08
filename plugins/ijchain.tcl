@@ -15,5 +15,5 @@ hook handlePRIVMSG ijchain 30 {serverid msg} {
             return [list $serverid [dict replace $msg src *$nick trailing "\001ACTION $text\001"]]
         }
     }
-    continue
+    return -code continue
 }

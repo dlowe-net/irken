@@ -14,7 +14,7 @@ set ::lastspoke {}
 hook handlePRIVMSG filterjoins 70 {serverid msg} {
     # mark when someone speaks in a channel
     dict set ::lastspoke $serverid [dict get $msg src] [clock seconds]
-    continue
+    return -code continue
 }
 proc worthy {serverid nick} {
     if {![dict exists $::lastspoke $serverid $nick]} {
@@ -27,23 +27,23 @@ proc worthy {serverid nick} {
     return 1
 }
 
-# Irken display priorities are set to 75, so breaking here will
+# Irken display priorities are set to 75, so return -code breaking here will
 # prevent the messages from being displayed.
 hook handleJOIN filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        continue
+        return -code continue
     }
-    break
+    return -code break
 }
 hook handlePART filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        continue
+        return -code continue
     }
-    break
+    return -code break
 }
 hook handleQUIT filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        continue
+        return -code continue
     }
-    break
+    return -code break
 }
