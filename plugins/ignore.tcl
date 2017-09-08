@@ -39,37 +39,37 @@ hook handle001 ignore 10 {serverid msg} {
 
 hook handlePRIVMSG ignore 40 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        return -code break
+        break
     }
-    return -code continue
+    continue
 }
 
 hook handleNOTICE ignore 40 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        return -code break
+        break
     }
-    return -code continue
+    continue
 }
 
 hook handleJOIN ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        return -code break
+        break
     }
-    return -code continue
+    continue
 }
 
 hook handlePART ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        return -code break
+        break
     }
-    return -code continue
+    continue
 }
 
 hook handleQUIT ignore 60 {serverid msg} {
     if {[lsearch -exact $::ignorelist [dict get $msg src]] != -1} {
-        return -code break
+        break
     }
-    return -code continue
+    continue
 }
 
 hook cmdIGNORE ignore 50 {serverid arg} {
@@ -79,7 +79,7 @@ hook cmdIGNORE ignore 50 {serverid arg} {
         } else {
             addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
         }
-        return -code continue
+        continue
     }
     set targets [ignorenicks [split $arg " "]]
     if {$targets eq ""} {
@@ -88,7 +88,7 @@ hook cmdIGNORE ignore 50 {serverid arg} {
         addchantext $::active "*" "Added to ignore list: $targets\n" italic
         updateignoreconf
     }
-    return -code continue
+    continue
 }
 
 hook cmdUNIGNORE ignore 50 {serverid arg} {
@@ -98,7 +98,7 @@ hook cmdUNIGNORE ignore 50 {serverid arg} {
         } else {
             addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
         }
-        return -code continue
+        continue
     }
     set targets {}
     foreach nick [split $arg " "] {
@@ -113,5 +113,5 @@ hook cmdUNIGNORE ignore 50 {serverid arg} {
         addchantext $::active "*" "Removed from ignore list: $targets\n" italic
         updateignoreconf
     }
-    return -code continue
+    continue
 }

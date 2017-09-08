@@ -14,7 +14,7 @@ set ::lastspoke {}
 hook handlePRIVMSG filterjoins 70 {serverid msg} {
     # mark when someone speaks in a channel
     dict set ::lastspoke $serverid [dict get $msg src] [clock seconds]
-    return -code continue
+    continue
 }
 proc worthy {serverid nick} {
     if {![dict exists $::lastspoke $serverid $nick]} {
@@ -31,19 +31,19 @@ proc worthy {serverid nick} {
 # prevent the messages from being displayed.
 hook handleJOIN filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        return -code continue
+        continue
     }
-    return -code break
+    break
 }
 hook handlePART filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        return -code continue
+        continue
     }
-    return -code break
+    break
 }
 hook handleQUIT filterjoins 70 {serverid msg} {
     if {[worthy $serverid [dict get $msg src]]} {
-        return -code continue
+        continue
     }
-    return -code break
+    break
 }
