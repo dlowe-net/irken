@@ -901,7 +901,7 @@ hook handlePRIVMSG irken 50 {serverid msg} {
     ensurechan $chanid {}
     set tag ""
     if {[string first [dict get $::serverinfo $serverid nick] $text] != -1} {set tag highlight}
-    if [regexp {^\001ACTION (.+)\001} $text -> text] {
+    if {[regexp {^\001ACTION (.+)\001} $text -> text]} {
         addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
     } else {
         addchantext $chanid [dict get $msg src] "$text\n" $tag
@@ -944,7 +944,7 @@ hook handleUnknown irken 50 {serverid msg} {
 }
 
 proc recv {fd} {
-    if [eof $fd] {
+    if {[eof $fd]} {
         disconnected $fd
         return
     }
@@ -1044,7 +1044,7 @@ proc sendmsg {serverid chan text} {
         return
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
-    if [regexp {^\001ACTION (.+)\001} $text -> text] {
+    if {[regexp {^\001ACTION (.+)\001} $text -> text]} {
         addchantext $::active "*" "[dict get $::serverinfo $serverid nick] $text\n" self
     } else {
         addchantext $::active [dict get $::serverinfo $serverid nick] "$text\n" self
@@ -1059,7 +1059,7 @@ proc returnkey {} {
     }
     set msg [.cmd get]
     dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
-    if [regexp {^/(\S+)\s*(.*)} $msg -> cmd msg] {
+    if {[regexp {^/(\S+)\s*(.*)} $msg -> cmd msg]} {
         docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
     } else {
         sendmsg [serverpart $::active] [channelpart $::active] $msg
