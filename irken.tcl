@@ -1063,7 +1063,7 @@ proc returnkey {} {
     dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
     if {[regexp {^/(\S+)\s*(.*)} $msg -> cmd msg]} {
         docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
-    } else {
+    } elseif {$msg ne ""} {
         sendmsg [serverpart $::active] [channelpart $::active] $msg
     }
     .cmd delete 0 end
