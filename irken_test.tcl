@@ -57,8 +57,8 @@ proc irken_fixture {op} {
         initui
         # TODO: set up a server connection with a pipe
         dict set ::serverinfo "TestServer" [dict create fd 0 nick "test"]
-        ensurechan [chanid "TestServer" ""] {}
-        ensurechan [chanid "TestServer" "#test"] {}
+        ensurechan "TestServer" "" {}
+        ensurechan "TestServer" "#test" {}
         set ::active [chanid "TestServer" "#test"]
         return
     }
@@ -95,8 +95,8 @@ test colorcode {} {
 }
 
 test regexranges {} {
-    asserteq [regexranges "testing text" {te te} {ing ing}] {{0 push te} {2 pop te} {8 push te} {10 pop te} {4 push ing} {7 pop ing}}
-    asserteq [regexranges "x https://example.com/ x" {{https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} hlink}] {{2 push hlink} {22 pop hlink}}
+    asserteq [regexranges "testing text" te te] {{0 push te} {2 pop te} {8 push te} {10 pop te}}
+    asserteq [regexranges "x https://example.com/ x" {https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} hlink] {{2 push hlink} {22 pop hlink}}
 }
 
 test combinestyles {} {

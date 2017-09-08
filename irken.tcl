@@ -355,8 +355,7 @@ proc remchanuser {chanid user} {
 }
 
 proc userclick {} {
-    set chanid [chanid [serverpart $::active] [.users selection]]
-    .nav selection set $chanid
+    .nav selection set [chanid [serverpart $::active] [.users selection]]
 }
 
 proc loopedtreenext {window item} {
@@ -466,15 +465,10 @@ proc colorcode {text} {
     return [list $result $tagranges]
 }
 
-proc regexranges {text args} {
+proc regexranges {text regex tag} {
     set ranges {}
-    foreach regextag $args {
-        lassign $regextag regex tag
-        set start 0
-        while {[regexp -indices -start $start -- $regex $text match]} {
-            lappend ranges [list [lindex $match 0] push $tag] [list [expr {[lindex $match 1] + 1}] pop $tag]
-            set start [expr {[lindex $match 1] + 1}]
-        }
+    for {set start 0} {[regexp -indices -start $start -- $regex $text match]} {set start [expr {[lindex $match 1] + 1}]} {
+        lappend ranges [list [lindex $match 0] push $tag] [list [expr {[lindex $match 1] + 1}] pop $tag]
     }
     return $ranges
 }
@@ -494,19 +488,16 @@ proc combinestyles {text ranges} {
         if {$op eq "push"} {
             lappend activetags $tag
         } else {
-            if {[set tagpos [lsearch $activetags $tag]] != -1} {
-                set activetags [lreplace $activetags $tagpos $tagpos]
-            }
+            set activetags [lsearch -all -not -exact $activetags $tag]
         }
     }
-    lappend result [string range $text $textstart end] $activetags
-    return $result
+    return [concat $result [list [string range $text $textstart end] $activetags]]
 }
 
 proc addchantext {chanid nick text args} {
     lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
     lassign [colorcode $text] text ranges
-    lappend ranges {*}[regexranges $text {{https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink}]
+    lappend ranges {*}[regexranges $text {https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink]
     lappend ranges {*}[lmap linetag $args {list 0 push $linetag}]
     lappend newtext {*}[combinestyles $text $ranges]
     dict append ::channeltext $chanid " $newtext"
@@ -567,9 +558,7 @@ proc selectchan {} {
 
 proc ensurechan {serverid chan tags} {
     set chanid [chanid $serverid $chan]
-    if {![dict exists $::channeltext $chanid]} {
-        dict set ::channeltext $chanid {}
-    }
+    set ::channeltext [dict merge [dict create $chanid {}] $::channeltext]
     if {![dict exists $::channelinfo $chanid]} {
         dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
     }
@@ -867,22 +856,26 @@ hook handlePART irken-display 75 {serverid msg} {
     return -code continue
 }
 hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"; return -code continue}
-hook handlePRIVMSG irken 50 {serverid msg} {
-    set chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
-    if {[isself $serverid $chan]} {
+hook handlePRIVMSG irken-privmsg 0 {serverid msg} {
+    # We handle privmsgs specially here, since there's some duplicate
+    # work between a CTCP ACTION and a normal PRIVMSG.
+    dict set msg chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
+    if {[isself $serverid [dict get $msg chan]]} {
         # direct message - so chan is source, not target
-        set chan [dict get $msg src]
+        dict set msg chan [dict get $msg src]
     }
-    set text [dict get $msg trailing]
-    set chanid [chanid $serverid $chan]
-    ensurechan $serverid $chan {}
-    set tag ""
-    if {[string first [dict get $::serverinfo $serverid nick] $text] != -1} {set tag highlight}
-    if {[regexp {^\001ACTION (.+)\001} $text -> text]} {
-        addchantext $chanid "*" "[dict get $msg src] $text\n" $tag
-    } else {
-        addchantext $chanid [dict get $msg src] "$text\n" $tag
+    if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
+        dict set msg tag highlight
     }
+    return [list $serverid $msg]
+}
+hook handlePRIVMSG irken 50 {serverid msg} {
+    if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [dict get $msg trailing] -> cmd text]} {
+        hook call ctcp$cmd $serverid $msg $text
+        return -code continue
+    }
+    ensurechan $serverid [dict get $msg chan] {}
+    addchantext [chanid $serverid [dict get $msg chan]] [dict get $msg src] "[dict get $msg trailing]\n" [dict get? {} $msg tag]
     return -code continue
 }
 hook handleQUIT irken 50 {serverid msg} {
@@ -918,6 +911,39 @@ hook handleTOPIC irken 50 {serverid msg} {
 hook handleUnknown irken 50 {serverid msg} {
     addchantext $serverid "*" "[dict get $msg line]\n" italic
     return -code continue
+}
+
+hook ctcpACTION irken 50 {serverid msg text} {
+    ensurechan $serverid [dict get $msg chan] {}
+    addchantext [chanid $serverid [dict get $msg chan]] "*" "[dict get $msg src] $text\n" [dict get? {} $msg tag]
+}
+hook ctcpCLIENTINFO irken 50 {serverid msg text} {
+    if {$text eq ""} {
+        addchantext $serverid "*" "CTCP CLIENTINFO request from [dict get $msg src]\n"
+        send $serverid "PRIVMSG [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
+    } else {
+        addchantext $serverid "*" "CTCP CLIENTINFO reply from [dict get $msg src]: $text\n"
+    }
+}
+hook ctcpPING irken 50 {serverid msg text} {
+    addchantext $serverid "*" "CTCP PING request from [dict get $msg src]: $text\n"
+    send $serverid "PRIVMSG [dict get $msg src] :\001PING $text\001"
+}
+hook ctcpTIME irken 50 {serverid msg text} {
+    if {$text eq ""} {
+        addchantext $serverid "*" "CTCP TIME request from [dict get $msg src]\n"
+        send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format -gmt 1 [clock seconds]]\001"
+    } else {
+        addchantext $serverid "*" "CTCP TIME reply from [dict get $msg src]: $text\n"
+    }
+}
+hook ctcpVERSION irken 50 {serverid msg text} {
+    if {$text eq ""} {
+        addchantext $serverid "*" "CTCP VERSION request from [dict get $msg src]\n"
+        send $serverid "PRIVMSG [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
+    } else {
+        addchantext $serverid "*" "CTCP VERSION reply from [dict get $msg src]: $text\n"
+    }
 }
 
 proc recv {fd} {
