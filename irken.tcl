@@ -566,7 +566,6 @@ proc ensurechan {serverid chan tags} {
         .nav item $chanid -text $chan
         return
     }
-    lassign [list [serverpart $chanid] [channelpart $chanid] direct] serverid chan
     set tag [expr {$chan eq "" ? "server":[ischannel $chanid] ? "channel":"direct"}]
     if {$chan eq ""} {
         .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
