@@ -37,6 +37,7 @@ proc runtests {} {
         }
         try {
             incr testcount
+            puts stdout "$cmd..."
             {*}$cmd
         } on error {err} {
             incr failcount
@@ -51,18 +52,32 @@ proc runtests {} {
     exit 0
 }
 
+proc testserver {fd addr port} {
+    fconfigure $fd -blocking 0
+    dict set ::serverinfo "TestServer" sfd $fd
+}
+
 proc irken_fixture {op} {
     if {$op eq "setup"} {
         initvars
         initui
-        # TODO: set up a server connection with a pipe
-        dict set ::serverinfo "TestServer" [dict create fd 0 nick "test"]
+        set ::serverfd [socket -server testserver -myaddr "localhost" 0]
+        set fd [socket "localhost" [lindex [fconfigure $::serverfd -sockname] 2]]
+        dict set ::serverinfo "TestServer" [dict create fd $fd nick "test"]
+        fconfigure $fd -blocking 0
+        vwait ::serverinfo
         ensurechan "TestServer" "" {}
         ensurechan "TestServer" "#test" {}
-        set ::active [chanid "TestServer" "#test"]
+        ensurechan "TestServer" "target" {}
+        set ::active {}
+        .nav selection set [chanid "TestServer" "#test"]
+        selectchan
         return
     }
-    destroy {*}[winfo children .]
+    close [dict get $::serverinfo "TestServer" sfd]
+    close [dict get $::serverinfo "TestServer" fd]
+    close $::serverfd
+    destroy {*}[lsearch -all -inline -not -exact [winfo children .] ".#BWidget"]
 }
 
 test irctolower {} {
@@ -126,6 +141,48 @@ test remchanuser {irken_fixture} {
     assert {[.users exists "testuser"]}
     remchanuser "TestServer/#test" "testuser"
     assert {![.users exists "testuser"]}
+}
+
+test removechan {irken_fixture} {
+    assert {[dict exists $::channeltext "TestServer/#test"]}
+    assert {[dict exists $::channelinfo "TestServer/#test"]}
+    asserteq [.nav focus] "TestServer/#test"
+    removechan "TestServer/#test"
+    assert {![dict exists $::channeltext "TestServer/#test"]}
+    assert {![dict exists $::channelinfo "TestServer/#test"]}
+    assert {![.nav exists "TestServer/#test"]}
+    asserteq [.nav selection] "TestServer/target"
+    asserteq [.nav focus] "TestServer/target"
+    asserteq $::active "TestServer/target"
+}
+
+test closecmd {irken_fixture} {
+    .cmd configure -validate none
+    .cmd insert 0 "/close #test"
+    .cmd configure -validate key
+    returnkey
+    asserteq [gets [dict get $::serverinfo "TestServer" sfd]] "PART #test :"
+    assert {![.nav exists "TestServer/#test"]}
+    asserteq [.nav selection] "TestServer/target"
+    asserteq [.nav focus] "TestServer/target"
+    asserteq $::active "TestServer/target"
+    assert {![dict exists $::channeltext "TestServer/#test"]}
+    assert {![dict exists $::channelinfo "TestServer/#test"]}
+}
+
+test closecmdwithuser {irken_fixture} {
+    .nav selection set [chanid "TestServer" "target"]
+    selectchan
+    .cmd configure -validate none
+    .cmd insert 0 "/close target"
+    .cmd configure -validate key
+    returnkey
+    assert {![.nav exists "TestServer/target"]}
+    asserteq [.nav selection] "TestServer/#test"
+    asserteq [.nav focus] "TestServer/#test"
+    asserteq $::active "TestServer/#test"
+    assert {![dict exists $::channeltext "TestServer/target"]}
+    assert {![dict exists $::channelinfo "TestServer/target"]}
 }
 
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {

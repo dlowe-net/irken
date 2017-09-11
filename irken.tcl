@@ -327,7 +327,7 @@ proc addchanuser {chanid user modes} {
             return
         }
         # update user prefix
-        set users [lreplace $users $pos $pos $userentry]
+        setchanusers $chanid [lreplace $users $pos $pos $userentry]
         if {$chanid eq $::active} {
             .users tag remove [lindex [lindex $users $pos] 1] $user
             foreach mode $modes {
@@ -336,23 +336,22 @@ proc addchanuser {chanid user modes} {
         }
     } else {
         # entirely new user
-        lappend users $userentry
+        setchanusers $chanid $userentry
         if {$chanid eq $::active} {
             .users insert {} end -id $user -text $user -tag [concat $modes [list "user"]]
         }
     }
-    setchanusers $chanid $users
 }
 
 proc remchanuser {chanid user} {
-    set user [string trimleft $user $::nickprefixes]
-    set users [dict get $::channelinfo $chanid users]
-    set idx [lsearch -exact -index 0 $users $user]
-    if {$idx != -1} {
-        set users [lreplace $users $idx $idx]
-        dict set ::channelinfo $chanid users $users
-        if {$chanid eq $::active} {
-            .users delete $user
+    if {[dict exists $::channelinfo $chanid]} {
+        set user [string trimleft $user $::nickprefixes]
+        set users [dict get $::channelinfo $chanid users]
+        if {[set idx [lsearch -exact -index 0 $users $user]] != -1} {
+            dict set ::channelinfo $chanid users [lreplace $users $idx $idx]
+            if {$chanid eq $::active} {
+                .users delete $user
+            }
         }
     }
 }
@@ -587,11 +586,12 @@ proc removechan {chanid} {
     dict unset ::channelinfo $chanid
     if {$::active eq $chanid} {
         ttk::treeview::Keynav .nav down
+        selectchan
         if {$::active eq $chanid} {
             ttk::treeview::Keynav .nav up
+            selectchan
         }
     }
-    selectchan
     .nav delete $chanid
 }
 
