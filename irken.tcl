@@ -128,7 +128,7 @@ proc initui {} {
     .nav tag config message -foreground orange
     .nav tag config unseen -foreground blue
     ttk::entry .topic -takefocus 0 -font Irken.Fixed
-    DynamicHelp::add .topic -command {.topic get}
+    DynamicHelp::add .topic -command {join [regexp -all -inline {\S.{0,79}(?=\s+|$)} [.topic get]] "\n"}
     DynamicHelp::configure -font Irken.Fixed
     text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
         -tabs [list \
