@@ -610,7 +610,7 @@ proc connect {serverid} {
     set port [dict get? [expr {$secure ? 6697:6667}] $::config $serverid -port]
 
     addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
-    set fd [if {$secure} {tls::socket $host $port} {socket $host $port}]
+    set fd [if {$secure} {tls::socket -async $host $port} {socket -async $host $port}]
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
