@@ -327,19 +327,19 @@ proc addchanuser {chanid user modes} {
             return
         }
         # update user prefix
-        setchanusers $chanid [lreplace $users $pos $pos $userentry]
         if {$chanid eq $::active} {
             .users tag remove [lindex [lindex $users $pos] 1] $user
             foreach mode $modes {
                 .users tag add $mode $user
             }
         }
+        setchanusers $chanid [lreplace $users $pos $pos $userentry]
     } else {
         # entirely new user
-        setchanusers $chanid $userentry
         if {$chanid eq $::active} {
             .users insert {} end -id $user -text $user -tag [concat $modes [list "user"]]
         }
+        setchanusers $chanid [concat $users [list $userentry]]
     }
 }
 
