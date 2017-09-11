@@ -28,7 +28,7 @@ Running
 
 These instructions are for Linux.  Windows support is unlikely.
 
-1. Install `tcl` and `tcl-tls` - you need at least version 8.6 of TCL.
+1. Install `tcl`, `tcl-tls`, and `bwidget` - you need at least version 8.6 of TCL.
 2. SVG rendering for icons currently depends on Imagemagick, which for some bizarre
 reason requires the Q16 "extra" codec for SVG to work.  Running `apt search
 'libmagickcore q16 extra'` should find the correct package to install on

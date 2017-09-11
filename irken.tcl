@@ -1,6 +1,7 @@
 #!/usr/bin/wish8.6
 # Irken - dlowe@dlowe.net
 package require tls
+package require BWidget
 
 proc ::tcl::dict::get? {default args} {expr {[catch {dict get {*}$args} val] ? $default:$val}}
 namespace ensemble configure dict -map [dict merge [namespace ensemble configure dict -map] {get? ::tcl::dict::get?}]
@@ -127,6 +128,8 @@ proc initui {} {
     .nav tag config message -foreground orange
     .nav tag config unseen -foreground blue
     ttk::entry .topic -takefocus 0 -font Irken.Fixed
+    DynamicHelp::add .topic -command {.topic get}
+    DynamicHelp::configure -font Irken.Fixed
     text .t -height 30 -wrap word -font Irken.Fixed -state disabled \
         -tabs [list \
                    [expr {25 * [font measure Irken.Fixed 0]}] right \
@@ -495,11 +498,10 @@ proc combinestyles {text ranges} {
 }
 
 proc addchantext {chanid nick text args} {
-    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick"
     lassign [colorcode $text] text ranges
     lappend ranges {*}[regexranges $text {https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink]
     lappend ranges {*}[lmap linetag $args {list 0 push $linetag}]
-    lappend newtext {*}[combinestyles $text $ranges]
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick" {*}[combinestyles $text $ranges]
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
         .nav tag add unseen $chanid
