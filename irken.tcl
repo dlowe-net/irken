@@ -976,7 +976,7 @@ proc recv {fd} {
 }
 
 hook cmdCLOSE irken 50 {serverid arg} {
-    set chanid [chanid $serverid [lindex $arg 0]]
+    set chanid [expr {[llength $arg] > 0 ? [chanid $serverid [lindex $arg 0]]:$::active}]
     if {![dict exists $::channelinfo $chanid]} {
         addchantext $::active "*" "No such channel [lindex $arg 0]\n" italic
         return -code break
