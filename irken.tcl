@@ -66,7 +66,7 @@ proc blankicon {} {return [svg 16 16 ""]}
 
 set ::nickprefixes "@%+&~"
 set ::codetagcolormap [dict create 0 white 1 black 2 navy 3 green 4 red 5 maroon 6 purple 7 olive 8 yellow 9 lgreen 10 teal 11 cyan 12 blue 13 magenta 14 gray 15 lgray {} {}]
-set ::tagcolormap [dict create white white black black navy navy green green red red maroon maroon purple purple olive {dark olive green} yellow gold lgreen {spring green} teal {pale turquoise} cyan cyan blue blue magenta magenta gray gray lgray {light grey} {} {}]
+set ::tagcolormap [dict create white white black black navy navy green green red red maroon maroon purple purple olive {dark olive green} yellow gold lgreen {spring green} teal {pale turquoise} cyan deepskyblue blue blue magenta magenta gray gray lgray {light grey} {} {}]
 
 proc initvars {} {
     # Set up fonts ahead of time so they can be configured
