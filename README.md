@@ -105,11 +105,11 @@ defined with the following command:
 When a hook's trigger occurs, each hook is called in order of priority.  The
 hook's handle should be unique, and is used so that the hook may be redefined.
 
-In Irken, triggers are of the form `handleMESSAGE` or `cmdCOMMAND`.  The
-priority of the normal irken handling of a hook is 50.  These hooks should
-always execute, since much of the UI depends on them.  The priority of normal
-irken message display is set to 75, so that plugins may block or change
-messages before they are displayed.
+In Irken, triggers are of the form `handleMESSAGE`, `ctcpMESSAGE`, or
+`cmdCOMMAND`.  The priority of the normal irken handling of a hook is 50.
+These hooks should always execute, since much of the UI depends on them.  The
+priority of normal irken message display is set to 75, so that plugins may
+block or change messages before they are displayed.
 
 `handleMESSAGE` hooks are passed a serverid and message, where message is a
 dict containing the fields:
@@ -127,10 +127,11 @@ dict containing the fields:
 
 A hook may return in one of three ways:
 
-- `return -code continue` - continue processing to the next hook.
-- `return -code break` - stop hook processing.
-- `return <list>` - continue processing to the next hook, but the
-  parameter list will be set to the return value.
+- `return -code continue <list>` - continues processing to the next hook, but
+  the parameter list will be set to the return value.
+- `return -code break` - stops hook processing.
+- normal return - continues processing to the next hook, ignoring the return
+  value.
 
 Some useful hooks:
 
