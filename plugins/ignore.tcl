@@ -11,9 +11,9 @@
 set ::ignorelist {}
 set ::ignoreconfpath "~/.config/irken/ignore.conf"
 
-proc ignorenicks {nicks} {
+proc ignorenicks {args} {
     set targets {}
-    foreach nick $nicks {
+    foreach nick $args {
         if {[lsearch -exact $::ignorelist $nick] == -1} {
             lappend targets $nick
             lappend ::ignorelist $nick
