@@ -63,7 +63,7 @@ proc irken_fixture {op} {
         initui
         set ::serverfd [socket -server testserver -myaddr "localhost" 0]
         set fd [socket "localhost" [lindex [fconfigure $::serverfd -sockname] 2]]
-        dict set ::serverinfo "TestServer" [dict create fd $fd nick "test"]
+        dict set ::serverinfo "TestServer" [dict create fd $fd nick "test" casemapping "rfc1459"]
         fconfigure $fd -blocking 0
         vwait ::serverinfo
         ensurechan "TestServer" "" {}
@@ -81,14 +81,21 @@ proc irken_fixture {op} {
 }
 
 test irctolower {} {
-    asserteq [irctolower "FOO"] "foo"
-    asserteq [irctolower "FOO\[\]"] "foo\{\}"
+    asserteq [irctolower "ascii" "FOO"] "foo"
+    asserteq [irctolower "rfc1459" "FOO"] "foo"
+    asserteq [irctolower "strict-rfc1459" "FOO"] "foo"
+    asserteq [irctolower "ascii" "FOO\[\]^"] "foo\[\]^"
+    asserteq [irctolower "rfc1459" "FOO\[\]^"] "foo\{\}~"
+    asserteq [irctolower "strict-rfc1459" "FOO\[\]^"] "foo\{\}^"
 }
 
 test ircstrcmp {} {
-    assert {[ircstrcmp "foo" "foo"] == 0}
-    assert {[ircstrcmp "foo\[\]" "foo\[\]"] == 0}
-    assert {[ircstrcmp "foo\[\]" "foo\{\}"] == 0}
+    assert {[ircstrcmp "ascii" "foo\[\]^" "foo\[\]^"] == 0}
+    assert {[ircstrcmp "ascii" "foo\[\]^" "foo\{\}~"] != 0}
+    assert {[ircstrcmp "rfc1459" "foo\[\]" "foo\{\}"] == 0}
+    assert {[ircstrcmp "strict-rfc1459" "foo\[\]" "foo\{\}"] == 0}
+    assert {[ircstrcmp "rfc1459" "foo\[\]^" "foo\{\}~"] == 0}
+    assert {[ircstrcmp "strict-rfc1459" "foo\[\]^" "foo\{\}~"] != 0}
 }
 
 test colorcode {} {

@@ -43,7 +43,7 @@ proc hook {op name args} {
 }
 
 # A chanid is $serverid for the server channel, $serverid/$channel for channel display.
-proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return [string cat $serverid "/" [irctolower $chan]]} }
+proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return [string cat $serverid "/" [irctolower [dict get $::serverinfo $serverid casemapping] $chan]]} }
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
 proc ischannel {chanid} {regexp -- {^[&#+!][^ ,\a]{0,49}$} [channelpart $chanid]}
@@ -210,17 +210,25 @@ proc initnetwork {} {
     }
 }
 
-proc irctolower {str} {return [string map [list \[ \{ \] \} \\ \| \~ \^] [string tolower $str]]}
-proc ircstrcmp {a b} {return [string compare [irctolower $a] [irctolower $b]]}
-proc irceq {a b} {return [expr {[ircstrcmp $a $b] == 0}]}
+proc irctolower {casemapping str} {
+    set result ""
+    set upperbound [dict get {ascii 90 rfc1459 94 strict-rfc1459 93} $casemapping]
+    foreach c [split $str ""] {
+        set code [scan $c %c]
+        lappend result [format %c [expr {$code >= 65 && $code <= $upperbound ? $code+32:$code}]]
+    }
+    return [join $result ""]
+}
+proc ircstrcmp {casemapping a b} {return [string compare [irctolower $casemapping $a] [irctolower $casemapping $b]]}
+proc irceq {casemapping a b} {return [expr {[ircstrcmp $casemapping $a $b] == 0}]}
 proc rankeduser {entry} {
     if {[set rank [lsearch -exact [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
         set rank 9
     }
     return $rank[lindex $entry 0]
 }
-proc usercmp {a b} {return [ircstrcmp [rankeduser $a] [rankeduser $b]]}
-proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid nick] $nick]}
+proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $a] [rankeduser $b]]}
+proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid nick] $nick]}
 
 proc setchantopic {chanid text} {
     dict set ::channelinfo $chanid topic $text
@@ -301,7 +309,7 @@ proc tabcomplete {} {
     return -code break
 }
 proc setchanusers {chanid users} {
-    set users [lsort -command usercmp $users]
+    set users [lsort -command "usercmp [serverpart $chanid]" $users]
     dict set ::channelinfo $chanid users $users
     if {$chanid ne $::active} {
         return
@@ -618,7 +626,7 @@ proc connect {serverid} {
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
-    dict set ::serverinfo $serverid [dict create fd $fd nick [dict get $::config $serverid -nick]]
+    dict set ::serverinfo $serverid [dict create fd $fd nick [dict get $::config $serverid -nick] casemapping "rfc1459"]
 }
 
 proc send {serverid str} {set fd [dict get $::serverinfo $serverid fd]; puts $fd $str; flush $fd}
@@ -651,6 +659,14 @@ hook handle001 irken 50 {serverid msg} {
     foreach chan [dict get $::config $serverid -autojoin] {
         ensurechan $serverid $chan disabled
         send $serverid "JOIN $chan"
+    }
+}
+hook handle005 irken 50 {serverid msg} {
+    foreach param [dict get $msg args] {
+        lassign [split $param "="] key val
+        if {[lsearch -exact {CASEMAPPING} $key] != -1} {
+            dict set ::serverinfo $serverid [string tolower $key] $val
+        }
     }
 }
 hook handle301 irken 50 {serverid msg} {
