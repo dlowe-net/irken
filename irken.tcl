@@ -46,7 +46,10 @@ proc hook {op name args} {
 proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return [string cat $serverid "/" [irctolower [dict get $::serverinfo $serverid casemapping] $chan]]} }
 proc serverpart {chanid} {lindex [split $chanid {/}] 0}
 proc channelpart {chanid} {lindex [split $chanid {/}] 1}
-proc ischannel {chanid} {regexp -- {^[&#+!][^ ,\a]{0,49}$} [channelpart $chanid]}
+proc ischannel {chanid} {
+    dict with ::serverinfo [serverpart $chanid] {}
+    regexp -- "^\[$chantypes\]\[^ ,\\a\]\{0,$channellen\}\$" [channelpart $chanid]
+}
 
 proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
@@ -607,6 +610,8 @@ proc removechan {chanid} {
     .nav delete $chanid
 }
 
+set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200"]
+
 proc connect {serverid} {
     if {[catch {dict get $::config $serverid -host} host]} {
         addchantext $serverid "*" "Fatal error: $serverid has no -host option $host.\n" italic
@@ -626,7 +631,7 @@ proc connect {serverid} {
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
-    dict set ::serverinfo $serverid [dict create fd $fd nick [dict get $::config $serverid -nick] casemapping "rfc1459"]
+    dict set ::serverinfo $serverid [dict merge [dict create fd $fd nick [dict get $::config $serverid -nick]] $::ircdefaults]
 }
 
 proc send {serverid str} {set fd [dict get $::serverinfo $serverid fd]; puts $fd $str; flush $fd}
@@ -664,7 +669,7 @@ hook handle001 irken 50 {serverid msg} {
 hook handle005 irken 50 {serverid msg} {
     foreach param [dict get $msg args] {
         lassign [split $param "="] key val
-        if {[lsearch -exact {CASEMAPPING} $key] != -1} {
+        if {[lsearch -exact {CASEMAPPING CHANTYPES CHANNELLEN} $key] != -1} {
             dict set ::serverinfo $serverid [string tolower $key] $val
         }
     }

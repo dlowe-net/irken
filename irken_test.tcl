@@ -63,7 +63,7 @@ proc irken_fixture {op} {
         initui
         set ::serverfd [socket -server testserver -myaddr "localhost" 0]
         set fd [socket "localhost" [lindex [fconfigure $::serverfd -sockname] 2]]
-        dict set ::serverinfo "TestServer" [dict create fd $fd nick "test" casemapping "rfc1459"]
+        dict set ::serverinfo "TestServer" [dict merge [dict create fd $fd nick "test" casemapping "rfc1459"] $::ircdefaults]
         fconfigure $fd -blocking 0
         vwait ::serverinfo
         ensurechan "TestServer" "" {}
@@ -124,6 +124,21 @@ test regexranges {} {
 test combinestyles {} {
     asserteq [combinestyles "rainbow text" {{0 push te} {2 pop te} {8 push te} {10 pop te} {4 push ing} {7 pop ing}}] \
         [list "ra" te "in" {} "bow" ing " " {} "te" te "xt" {}]
+}
+
+test ischannel {} {
+    set ::serverinfo [dict create "TestServer" $::ircdefaults]
+    assert {[ischannel [chanid "TestServer" "#foo"]]}
+    assert {[ischannel [chanid "TestServer" "#"]]}
+    assert {[ischannel [chanid "TestServer" "&foo"]]}
+    assert {![ischannel [chanid "TestServer" "foo"]]}
+    assert {![ischannel [chanid "TestServer" "# foo"]]}
+    assert {![ischannel [chanid "TestServer" "#\afoo"]]}
+    dict set ::serverinfo "TestServer" channellen 2
+    assert {[ischannel [chanid "TestServer" "#fo"]]}
+    assert {![ischannel [chanid "TestServer" "#foo"]]}
+    dict set ::serverinfo "TestServer" chantypes #
+    assert {![ischannel [chanid "TestServer" "&fo"]]}
 }
 
 test addchantext {irken_fixture} {
