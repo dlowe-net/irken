@@ -153,9 +153,9 @@ test addchanuser {irken_fixture} {
     assert {[.users exists "test\[user\]"]}
 
     addchanuser "TestServer/#test" "@test\[user\]" {}
-    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "test\[user\]" {ops}]]
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "test\[user\]" {o}]]
     assert {[.users exists "test\[user\]"]}
-    assert {[.users tag has ops "test\[user\]"]}
+    assert {[.users tag has o "test\[user\]"]}
 }
 
 test remchanuser {irken_fixture} {
@@ -205,6 +205,19 @@ test closecmdwithuser {irken_fixture} {
     asserteq $::active "TestServer/#test"
     assert {![dict exists $::channeltext "TestServer/target"]}
     assert {![dict exists $::channelinfo "TestServer/target"]}
+}
+
+test handleMODE {irken_fixture} {
+    addchanuser [chanid "TestServer" "#test"] "@target" {}
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o}]]
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" -o target] trailing ""]
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {}]]
+    assert {[.users exists "target"]}
+    assert {![.users tag has o "target"]}
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +o target] trailing ""]
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o}]]
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +v target] trailing ""]
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o v}]]
 }
 
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {

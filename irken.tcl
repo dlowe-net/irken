@@ -161,11 +161,11 @@ proc initui {} {
     ttk::label .nick -padding 3
     ttk::entry .cmd -validate key -validatecommand {stopimplicitentry} -font Irken.Fixed
     ttk::treeview .users -show tree -selectmode browse
-    .users tag config ops -foreground red -image [circle red]
-    .users tag config halfops -foreground pink -image [polygon pink 5]
-    .users tag config admin -foreground orange -image [polygon orange 3]
-    .users tag config voice -foreground blue -image [polygon blue 4]
-    .users tag config quiet -foreground gray -image [blankicon]
+    .users tag config q -foreground gray -image [polygon gray 6]
+    .users tag config a -foreground orange -image [polygon orange 3]
+    .users tag config o -foreground red -image [circle red]
+    .users tag config h -foreground pink -image [polygon pink 5]
+    .users tag config v -foreground blue -image [polygon blue 4]
     .users tag config user -foreground black -image [blankicon]
     .users column "#0" -width 140
     bind .users <Double-Button-1> {userclick}
@@ -224,13 +224,14 @@ proc irctolower {casemapping str} {
 }
 proc ircstrcmp {casemapping a b} {return [string compare [irctolower $casemapping $a] [irctolower $casemapping $b]]}
 proc irceq {casemapping a b} {return [expr {[ircstrcmp $casemapping $a $b] == 0}]}
-proc rankeduser {entry} {
-    if {[set rank [lsearch -exact [list ops halfops admin voice] [lindex $entry 1]]] == -1} {
+proc rankeduser {serverid entry} {
+    regexp -- "^\\((\[^\)\]*)\\)" [dict get $::serverinfo $serverid prefix] -> modes
+    if {[set rank [string first [lindex $entry 1 0] $modes]] == -1} {
         set rank 9
     }
     return $rank[lindex $entry 0]
 }
-proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $a] [rankeduser $b]]}
+proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $serverid $a] [rankeduser $serverid $b]]}
 proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid nick] $nick]}
 
 proc setchantopic {chanid text} {
@@ -299,16 +300,12 @@ proc tabcomplete {} {
             return -code break
         }
     }
-    set str [lindex $user 0]
-    if {$tabstart == 0} {
-        set str "$str: "
-    }
+    set str [expr {$tabstart == 0 ? "[lindex $user 0]: ":[lindex $user 0]}]
     .cmd configure -validate none
     .cmd delete $tabstart $tabend
     .cmd insert $tabstart $str
     .cmd configure -validate key
-    dict set ::channelinfo $::active tab \
-        [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
+    dict set ::channelinfo $::active tab [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
     return -code break
 }
 proc setchanusers {chanid users} {
@@ -328,31 +325,27 @@ proc setchanusers {chanid users} {
 
 # users should be {nick modes}
 proc addchanuser {chanid user modes} {
-    set impliedmode [dict get {@ ops % halfops & admin + voice ~ quiet {} {}} \
-                     [regexp -inline -- {^[@%&+~]} $user]]
-    if {$impliedmode ne {}} {
-        set user [string range $user 1 end]
-        lappend modes $impliedmode
-    }
-    set userentry [list $user $modes]
+    regexp -- "^\\((\[^\)\]*)\\)(.*)" [dict get $::serverinfo [serverpart $chanid] prefix] -> servermodes prefixes
+    regexp -- "^(\[$prefixes\]*)(.*)" $user -> userprefixes nick
+
+    set usermodes [concat $modes [lmap uprefix [split $userprefixes ""] {string index $servermodes [string first $uprefix $prefixes]}]]
+    set userentry [list $nick $usermodes]
     set users [dict get $::channelinfo $chanid users]
-    if {[set pos [lsearch -exact -index 0 $users $user]] != -1} {
+    if {[set pos [lsearch -exact -index 0 $users $nick]] != -1} {
         if {$userentry eq [lindex $users $pos]} {
             # exact match - same prefix with user
             return
         }
         # update user prefix
         if {$chanid eq $::active} {
-            .users tag remove [lindex [lindex $users $pos] 1] $user
-            foreach mode $modes {
-                .users tag add $mode $user
-            }
+            foreach oldmode [lindex [lindex $users $pos] 1] {.users tag remove $oldmode $nick}
+            foreach newmode $usermodes {.users tag add $newmode $nick}
         }
         setchanusers $chanid [lreplace $users $pos $pos $userentry]
     } else {
         # entirely new user
         if {$chanid eq $::active} {
-            .users insert {} end -id $user -text $user -tag [concat $modes [list "user"]]
+            .users insert {} end -id $nick -text $nick -tag [concat $modes [list "user"]]
         }
         setchanusers $chanid [concat $users [list $userentry]]
     }
@@ -610,7 +603,7 @@ proc removechan {chanid} {
     .nav delete $chanid
 }
 
-set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200"]
+set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200" prefix "(ov)@+"]
 
 proc connect {serverid} {
     if {[catch {dict get $::config $serverid -host} host]} {
@@ -669,7 +662,7 @@ hook handle001 irken 50 {serverid msg} {
 hook handle005 irken 50 {serverid msg} {
     foreach param [dict get $msg args] {
         lassign [split $param "="] key val
-        if {[lsearch -exact {CASEMAPPING CHANTYPES CHANNELLEN} $key] != -1} {
+        if {[lsearch -exact {CASEMAPPING CHANTYPES CHANNELLEN PREFIX} $key] != -1} {
             dict set ::serverinfo $serverid [string tolower $key] $val
         }
     }
@@ -753,7 +746,7 @@ hook handleKICK irken-display 75 {serverid msg} {
     }
 }
 hook handleMODE irken 50 {serverid msg} {
-    lassign [dict get $msg args] target change
+    set args [lassign [dict get $msg args] target]
     set chanid [chanid $serverid $target]
     set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
     if {[lsearch -exact [dict get $msg src] "!"] == -1} {
@@ -761,31 +754,28 @@ hook handleMODE irken 50 {serverid msg} {
     } else {
         addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" italic
     }
+    regexp -- "^\\((\[^\)\]*)\\)" [dict get $::serverinfo $serverid prefix] -> modes
     if {[ischannel $chanid]} {
-        switch -- $change {
-            "-o" {
-                # take ops
-                set oper [lindex [dict get $msg args] 2]
-                remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] $oper {}
+        lassign {} changes params
+        foreach arg $args {
+            if {[regexp {^([-+])(.*)} $arg -> op terms]} {
+                lappend changes {*}[lmap term $terms {list $op $term}]
+            } else {
+                lappend params $arg
             }
-            "+o" {
-                # give ops
-                set oper [lindex [dict get $msg args] 2]
-                remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] @$oper {}
-            }
-            "-v" {
-                # take voice
-                set oper [lindex [dict get $msg args] 2]
-                remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] $oper {}
-            }
-            "+v" {
-                # give voice
-                set oper [lindex [dict get $msg args] 2]
-                remchanuser [chanid $serverid $target] $oper
-                addchanuser [chanid $serverid $target] +$oper {}
+        }
+        foreach change $changes {
+            if {[string first [lindex $change 1] $modes] != -1}  {
+                set params [lassign $params param]
+                set modes [lindex [lsearch -inline -index 0 -exact [dict get $::channelinfo $chanid users] $param] 1]
+                if {[lindex $change 0] eq "+"} {
+                    if {[lsearch $modes [lindex $change 1]] == -1} {
+                        lappend modes [lindex $change 1]
+                    }
+                } else {
+                    set modes [lsearch -all -inline -not -exact $modes [lindex $change 1]]
+                }
+                addchanuser $chanid $param $modes
             }
         }
     }
