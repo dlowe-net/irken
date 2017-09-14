@@ -139,11 +139,3 @@ Some useful hooks:
 - `handlePRIVMSG` - used for when a message is received on a channel or privately
 
 Make sure to look at the included plugins for inspiration!
-
-Planned
--------
-
-- remove channel button
-- proper MODE message handling
-- CAP awareness
-- Netsplit detection
