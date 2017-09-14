@@ -612,9 +612,11 @@ proc connect {serverid} {
     }
     if {![dict exists $::config $serverid -nick]} {
         addchantext $serverid "*" "Fatal error: $serverid has no -nick option.\n" italic
+        return
     }
     if {![dict exists $::config $serverid -user]} {
         addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" italic
+        return
     }
     set secure [dict get? 0 $::config $serverid -secure]
     set port [dict get? [expr {$secure ? 6697:6667}] $::config $serverid -port]
