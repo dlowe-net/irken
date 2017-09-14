@@ -500,7 +500,9 @@ proc combinestyles {text ranges} {
         if {$op eq "push"} {
             lappend activetags $tag
         } else {
-            set activetags [lsearch -all -not -exact $activetags $tag]
+            if {[set pos [lsearch -exact $activetags $tag]] != -1} {
+                set activetags [lreplace $activetags $pos $pos {}]
+            }
         }
     }
     return [concat $result [list [string range $text $textstart end] $activetags]]
@@ -515,8 +517,8 @@ hook tagchantext irken-http 60 {text ranges} {
 }
 
 proc addchantext {chanid nick text args} {
-    lassign [hook call tagchantext $text [lmap linetag $args {list 0 push $linetag}]] text ranges
-    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick" {*}[combinestyles $text $ranges]
+    set textranges [combinestyles {*}[hook call tagchantext $text [lmap linetag $args {list 0 push $linetag}]]]
+    lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick" {*}$textranges
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
         .nav tag add unseen $chanid
