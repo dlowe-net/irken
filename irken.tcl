@@ -948,7 +948,7 @@ proc recv {fd} {
     gets $fd line
     set serverid [dict get $::servers $fd]
     set line [string trimright [encoding convertfrom utf-8 $line]]
-    if {! [regexp {^(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*([^:]+)?(?::(.*))?} $line -> src user host cmd args trailing]} {
+    if {![regexp {^(?:@(.*?) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*([^:]+)?(?::(.*))?} $line -> tags src user host cmd args trailing]} {
         .t insert end PARSE_ERROR:$line\n warning
         return
     }
@@ -959,7 +959,7 @@ proc recv {fd} {
         # Numeric responses specify a useless target afterwards
         set args [lrange $args 1 end]
     }
-    set msg [dict create src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
+    set msg [dict create tags $tags src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
     set hook handle$cmd
     if {[hook exists $hook]} {
         hook call $hook $serverid $msg
