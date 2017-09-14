@@ -115,6 +115,8 @@ proc loadconfig {} {
     }
 }
 
+hook openhlink irken 50 {hlink} {exec -ignorestderr -- xdg-open $hlink}
+
 proc initui {} {
     catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
     catch {font create Irken.FixedBold {*}[font actual Irken.Fixed] -weight bold}
@@ -155,7 +157,7 @@ proc initui {} {
         .t tag config bg_$tagcolor -background $color
     }
     .t tag config hlink -foreground blue -underline 1
-    .t tag bind hlink <Button-1> {exec -ignorestderr -- xdg-open [.t get {*}[.t tag prevrange hlink @%x,%y]]}
+    .t tag bind hlink <Button-1> {hook call openhlink [.t get {*}[.t tag prevrange hlink @%x,%y]]}
     .t tag bind hlink <Enter> {.t configure -cursor hand2}
     .t tag bind hlink <Leave> {.t configure -cursor xterm}
     ttk::frame .cmdline
