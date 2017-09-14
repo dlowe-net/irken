@@ -974,6 +974,10 @@ hook cmdCLOSE irken 50 {serverid arg} {
         addchantext $::active "*" "No such channel [lindex $arg 0]\n" italic
         return -code break
     }
+    if {[channelpart $chanid] eq ""} {
+        addchantext $::active "*" "Closing a server window is not allowed.\n" italic
+        return -code break
+    }
     if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
         send $serverid "PART [lindex $arg 0] :[lrange $arg 1 end]"
     }
