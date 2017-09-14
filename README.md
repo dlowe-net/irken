@@ -55,10 +55,10 @@ The server ID must not contain spaces.  The options are these:
 
 * `-host` (required) server hostname
 * `-nick` (required) nick for connecting to server
-* `-port` (optional) server port for connection.  Defaults to 6667 if -secure is
-  False, or 6697 if secure is True.
+* `-port` (optional) server port for connection.  Defaults to 6697 if `-insecure` is
+  false, or 6667 if `-insecure` is true.
 * `-pass` (optional) password for server connection
-* `-secure` (optional) use an encrypted connection if True
+* `-insecure` (optional) use an un-encrypted connection if True
 * `-autoconnect` (optional) connect to server on startup if True
 * `-autojoin` (optional) a list of channels to join.  specified like `{"#one" "#two"}`
 

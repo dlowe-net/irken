@@ -627,11 +627,11 @@ proc connect {serverid} {
         addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" italic
         return
     }
-    set secure [dict get? 0 $::config $serverid -secure]
-    set port [dict get? [expr {$secure ? 6697:6667}] $::config $serverid -port]
+    set insecure [dict get? 0 $::config $serverid -insecure]
+    set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
     addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
-    set fd [if {$secure} {tls::socket -async $host $port} {socket -async $host $port}]
+    set fd [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
