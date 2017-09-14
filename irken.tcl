@@ -703,7 +703,7 @@ hook handle333 irken 50 {serverid msg} {
 }
 hook handle353 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
-    foreach user [dict get $msg trailing] {
+    foreach user [split [dict get $msg trailing] " "] {
         addchanuser $chanid $user {}
     }
 }
