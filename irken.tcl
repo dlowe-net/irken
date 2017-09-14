@@ -115,7 +115,7 @@ proc loadconfig {} {
     }
 }
 
-hook openhlink irken 50 {hlink} {exec -ignorestderr -- xdg-open $hlink}
+hook openhlink irken 50 {hlink} {exec -ignorestderr -- xdg-open $hlink &}
 
 proc initui {} {
     catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
