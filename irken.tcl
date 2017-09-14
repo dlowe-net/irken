@@ -759,7 +759,7 @@ hook handleMODE irken 50 {serverid msg} {
         lassign {} changes params
         foreach arg $args {
             if {[regexp {^([-+])(.*)} $arg -> op terms]} {
-                lappend changes {*}[lmap term $terms {list $op $term}]
+                lappend changes {*}[lmap term [split $terms ""] {list $op $term}]
             } else {
                 lappend params $arg
             }
@@ -767,15 +767,15 @@ hook handleMODE irken 50 {serverid msg} {
         foreach change $changes {
             if {[string first [lindex $change 1] $modes] != -1}  {
                 set params [lassign $params param]
-                set modes [lindex [lsearch -inline -index 0 -exact [dict get $::channelinfo $chanid users] $param] 1]
+                set usermodes [lindex [lsearch -inline -index 0 -exact [dict get $::channelinfo $chanid users] $param] 1]
                 if {[lindex $change 0] eq "+"} {
-                    if {[lsearch $modes [lindex $change 1]] == -1} {
-                        lappend modes [lindex $change 1]
+                    if {[lsearch $usermodes [lindex $change 1]] == -1} {
+                        lappend usermodes [lindex $change 1]
                     }
                 } else {
-                    set modes [lsearch -all -inline -not -exact $modes [lindex $change 1]]
+                    set usermodes [lsearch -all -inline -not -exact $usermodes [lindex $change 1]]
                 }
-                addchanuser $chanid $param $modes
+                addchanuser $chanid $param $usermodes
             }
         }
     }
