@@ -214,11 +214,9 @@ proc initnetwork {} {
 }
 
 proc irctolower {casemapping str} {
-    set result ""
-    set upperbound [dict get {ascii 90 rfc1459 94 strict-rfc1459 93} $casemapping]
-    foreach c [split $str ""] {
-        set code [scan $c %c]
-        lappend result [format %c [expr {$code >= 65 && $code <= $upperbound ? $code+32:$code}]]
+    lassign [list [dict get {ascii 90 rfc1459 94 strict-rfc1459 93} $casemapping]] upperbound result
+    foreach c [lmap c [split $str ""] {scan $c %c}] {
+        lappend result [format %c [expr {$c >= 65 && $c <= $upperbound ? $c+32:$c}]]
     }
     return [join $result ""]
 }
@@ -555,12 +553,7 @@ proc selectchan {} {
         }
     }
     updatechaninfo $chanid
-    if {[dict exists $::serverinfo [serverpart $chanid] nick]} {
-        .nick configure -text [dict get $::serverinfo [serverpart $chanid] nick]
-    } else {
-        .nick configure -text [dict get $::config [serverpart $chanid] -nick]
-    }
-
+    .nick configure -text [dict get? [dict get $::config [serverpart $chanid] -nick] $::serverinfo [serverpart $chanid] nick]
     wm title . "Irken - $::active"
     focus .cmd
 }
@@ -654,10 +647,7 @@ proc disconnected {fd} {
 }
 
 hook handle001 irken 50 {serverid msg} {
-    if {![dict exists $::config $serverid -autojoin]} {
-        return
-    }
-    foreach chan [dict get $::config $serverid -autojoin] {
+    foreach chan [dict get? {} $::config $serverid -autojoin] {
         ensurechan $serverid $chan disabled
         send $serverid "JOIN $chan"
     }
@@ -891,10 +881,7 @@ hook handleQUIT irken 50 {serverid msg} {
     return -code continue [list $serverid $msg]
 }
 hook handleQUIT irken-display 75 {serverid msg} {
-    set note {}
-    if {[dict exists $msg trailing]} {
-        set note " ([dict get $msg trailing])"
-    }
+    set note [expr {[dict exists $msg trailing] ? " ([dict get $msg trailing])":""}]
     foreach chanid [dict get $msg affectedchans] {
         addchantext $chanid "*" "[dict get $msg src] has quit$note\n" italic
     }
@@ -1020,7 +1007,7 @@ hook cmdRELOAD irken 50 {serverid arg} {
     addchantext $::active "*" "Irken reloaded.\n" italic
 }
 hook cmdSERVER irken 50 {serverid arg} {
-    if {! [dict exists $::config $arg]} {
+    if {![dict exists $::config $arg]} {
         addchantext $::active "*" "$arg is not a server.\n" {} $::config
         return
     }
