@@ -33,6 +33,7 @@ proc hook {op name args} {
                     set args $val
                 }
             }
+            return $args
         }
         default {
             set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] $name]
@@ -191,6 +192,7 @@ proc initui {} {
     bind .cmd <Down> [list history down]
     bind .cmd <Tab> tabcomplete
 
+    hook call setupui
     dict for {serverid serverconf} $::config {
         ensurechan $serverid "" [list disabled]
     }
@@ -502,10 +504,16 @@ proc combinestyles {text ranges} {
     return [concat $result [list [string range $text $textstart end] $activetags]]
 }
 
+hook tagchantext irken-color 50 {text ranges} {
+    lassign [colorcode $text] text newranges
+    return -code continue [list $text [concat $ranges $newranges]]
+}
+hook tagchantext irken-http 60 {text ranges} {
+    return -code continue [list $text [concat $ranges [regexranges $text {https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink]]]
+}
+
 proc addchantext {chanid nick text args} {
-    lassign [colorcode $text] text ranges
-    lappend ranges {*}[regexranges $text {https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink]
-    lappend ranges {*}[lmap linetag $args {list 0 push $linetag}]
+    lassign [hook call tagchantext $text [lmap linetag $args {list 0 push $linetag}]] text ranges
     lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick" {*}[combinestyles $text $ranges]
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
@@ -553,7 +561,11 @@ proc selectchan {} {
         }
     }
     updatechaninfo $chanid
-    .nick configure -text [dict get? [dict get $::config [serverpart $chanid] -nick] $::serverinfo [serverpart $chanid] nick]
+    if {[dict exists $::serverinfo [serverpart $chanid]]} {
+        .nick configure -text [dict get $::serverinfo [serverpart $chanid] nick]
+    } else {
+        .nick configure -text [dict get $::config [serverpart $chanid] -nick]
+    }
     wm title . "Irken - $::active"
     focus .cmd
 }

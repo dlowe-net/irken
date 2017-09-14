@@ -105,6 +105,14 @@ defined with the following command:
 When a hook's trigger occurs, each hook is called in order of priority.  The
 hook's handle should be unique, and is used so that the hook may be redefined.
 
+A hook may return in one of three ways:
+
+- `return -code continue <list>` - continues processing to the next hook, but
+  the parameter list will be set to the return value.
+- `return -code break` - stops hook processing.
+- normal return - continues processing to the next hook, ignoring the return
+  value.
+
 In Irken, triggers are of the form `handleMESSAGE`, `ctcpMESSAGE`, or
 `cmdCOMMAND`.  The priority of the normal irken handling of a hook is 50.
 These hooks should always execute, since much of the UI depends on them.  The
@@ -125,13 +133,10 @@ dict containing the fields:
 
 `cmdCOMMAND` hooks are passed a serverid and the string following the command.
 
-A hook may return in one of three ways:
-
-- `return -code continue <list>` - continues processing to the next hook, but
-  the parameter list will be set to the return value.
-- `return -code break` - stops hook processing.
-- normal return - continues processing to the next hook, ignoring the return
-  value.
+`tagchantext` hooks are called when a message is added to a channel.  It is
+passed the text to be formatted and a list of ranges in the form `{<index> push
+<tag>}` or `{<index> pop <tag>}`.  These hooks *must* return via `return -code
+continue`, with new ranges being appended to the old.
 
 Some useful hooks:
 
