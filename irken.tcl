@@ -125,6 +125,7 @@ proc initui {} {
         -tabs [list \
                    [expr {25 * [font measure Irken.Fixed 0]}] right \
                    [expr {26 * [font measure Irken.Fixed 0]}] left]
+    .t tag config line -lmargin2 [expr {26 * [font measure Irken.Fixed 0]}]
     .t tag config nick -foreground steelblue
     .t tag config self   -foreground gray30
     .t tag config highlight  -foreground green
@@ -497,7 +498,7 @@ hook tagchantext irken-http 60 {text ranges} {
 }
 
 proc addchantext {chanid nick text args} {
-    set textranges [combinestyles {*}[hook call tagchantext $text [lmap linetag $args {list 0 push $linetag}]]]
+    set textranges [combinestyles {*}[hook call tagchantext $text [lmap linetag "$args line" {list 0 push $linetag}]]]
     lappend newtext "\[[clock format [clock seconds] -format %H:%M:%S]\]" {} "\t$nick\t" "nick" {*}$textranges
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
@@ -525,9 +526,7 @@ proc selectchan {} {
         return
     }
     .nav focus $chanid
-    .nav tag remove unseen $chanid
-    .nav tag remove message $chanid
-    .nav tag remove highlight $chanid
+    foreach tag {unseen message highlight} {.nav tag remove $tag $chanid}
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
