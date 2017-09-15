@@ -656,7 +656,7 @@ hook handle005 irken 50 {serverid msg} {
                 "PREFIX" {
                     if {[regexp -- "^\\((\[^\)\]*)\\)(.*)" $val -> modes prefixes]} {
                         dict set ::serverinfo $serverid prefix \
-                            [dict create {*}[concat {*}[lmap p $prefixes m $modes {list $p $m}]]]
+                            [dict create {*}[concat {*}[lmap p [split $prefixes ""] m [split $modes ""] {list $p $m}]]]
                     }
                 }
                 default {dict set ::serverinfo $serverid [string tolower $key] $val}
