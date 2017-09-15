@@ -550,7 +550,7 @@ proc selectchan {} {
     } else {
         .nick configure -text [dict get $::config [serverpart $chanid] -nick]
     }
-    wm title . "Irken - $::active"
+    wm title . "Irken - [serverpart $::active]/[.nav item $::active -text]"
     focus .cmd
 }
 
