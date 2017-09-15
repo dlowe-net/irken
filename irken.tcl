@@ -347,6 +347,7 @@ proc remchanuser {chanid user} {
 }
 
 proc userclick {} {
+    ensurechan [serverpart $::active] [.users selection] {}
     .nav selection set [chanid [serverpart $::active] [.users selection]]
 }
 
@@ -398,8 +399,7 @@ proc colorcode {text} {
     lassign {0 "" "" 0 0 black white} pos bold italic underline reverse fg bg result tagranges
     set rest $text
     while {$rest ne ""} {
-        set c [string range $rest 0 0]
-        switch -- $c {
+        switch -- [string index $rest 0] {
             "\x02" {
                 if {[string cat $bold $italic] ne ""} {
                     lappend tagranges [list $pos pop "$bold$italic"]
@@ -448,7 +448,7 @@ proc colorcode {text} {
                 lappend tagranges {*}$newtags
             }
             default {
-                append result $c
+                append result [string index $rest 0]
                 incr pos
             }
         }
