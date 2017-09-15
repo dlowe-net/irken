@@ -483,7 +483,7 @@ proc combinestyles {text ranges} {
             lappend activetags $tag
         } else {
             if {[set pos [lsearch -exact $activetags $tag]] != -1} {
-                set activetags [lreplace $activetags $pos $pos {}]
+                set activetags [lreplace $activetags $pos $pos]
             }
         }
     }
