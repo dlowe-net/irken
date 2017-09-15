@@ -54,24 +54,6 @@ proc ischannel {chanid} {
 
 proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
-proc icon {path} { return [image create photo -format png -data [exec -- rsvg -w 16 -h 16 $path /dev/stdout | base64]] }
-proc svg {width height paths} {
-    set svg "<svg width=\"$width\" height=\"$height\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
-    return [image create photo -format png -data [exec -- rsvg /dev/stdin /dev/stdout | base64 <<$svg]]
-}
-proc circle {color} {return [svg 16 16 "<circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/>"]}
-proc polygon {color sides} {
-    set angle [expr {2 * 3.14159 / $sides}]
-    for {set side 0} {$side < $sides} {incr side} {
-        lappend points [expr {5 * cos($angle * $side) + 6}],[expr {5 * sin($angle * $side) + 8}]
-    }
-    return [svg 16 16 "<polygon points=\"$points\" style=\"stroke:black;fill:$color\"/>"]
-}
-proc irkenicon {} {
-    return [svg 20 20 {<path d="M16.104,16.206c-0.11,0-0.22-0.037-0.31-0.11l-5.175-4.208H0.491C0.22,11.888,0,11.666,0,11.395V0.883c0-0.271,0.22-0.491,0.491-0.491h15.613c0.271,0,0.491,0.219,0.491,0.491v10.512c0,0.271-0.22,0.493-0.491,0.493h-1.081l1.515,3.593c0.039,0.069,0.06,0.15,0.06,0.235c0,0.271-0.22,0.49-0.491,0.49C16.107,16.206,16.104,16.206,16.104,16.206z" fill="#ffd89b"/>}]
-}
-proc blankicon {} {return [svg 16 16 ""]}
-
 set ::nickprefixes "@%+&~"
 set ::codetagcolormap [dict create 0 white 1 black 2 navy 3 green 4 red 5 maroon 6 purple 7 olive 8 yellow 9 lgreen 10 teal 11 cyan 12 blue 13 magenta 14 gray 15 lgray {} {}]
 set ::tagcolormap [dict create white white black black navy navy green green red red maroon maroon purple purple olive {dark olive green} yellow gold lgreen {spring green} teal {pale turquoise} cyan deepskyblue blue blue magenta magenta gray gray lgray {light grey} {} {}]
@@ -121,7 +103,7 @@ proc initui {} {
     catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
     catch {font create Irken.FixedBold {*}[font actual Irken.Fixed] -weight bold}
     catch {font create Irken.FixedBoldItalic {*}[font actual Irken.Fixed] -weight bold -slant italic}
-    wm iconphoto . [irkenicon]
+    wm iconphoto . [image create photo -format png -data $::irkenicon]
     ttk::style configure Treeview -rowheight [expr {8 + [font metrics Irken.List -linespace]}] -font Irken.List -indent 3
     ttk::panedwindow .root -orient horizontal
     .root add [ttk::frame .navframe -width 170] -weight 0
@@ -130,9 +112,9 @@ proc initui {} {
     ttk::treeview .nav -show tree -selectmode browse
     bind .nav <<TreeviewSelect>> selectchan
     .nav column "#0" -width 150
-    .nav tag config server -image [icon "/usr/share/icons/Humanity/apps/22/gnome-network-properties.svg"]
-    .nav tag config channel -image [icon "/usr/share/icons/Humanity/apps/22/system-users.svg"]
-    .nav tag config direct -image [icon "/usr/share/icons/Humanity/stock/48/stock_person.svg"]
+    .nav tag config server -image [image create photo -format png -data $::servericon]
+    .nav tag config channel -image [image create photo -format png -data $::channelicon]
+    .nav tag config direct -image [image create photo -format png -data $::usericon]
     .nav tag config disabled -foreground gray
     .nav tag config highlight -foreground green
     .nav tag config message -foreground orange
@@ -164,12 +146,12 @@ proc initui {} {
     ttk::label .nick -padding 3
     ttk::entry .cmd -validate key -validatecommand {stopimplicitentry} -font Irken.Fixed
     ttk::treeview .users -show tree -selectmode browse
-    .users tag config q -foreground gray -image [polygon gray 6]
-    .users tag config a -foreground orange -image [polygon orange 3]
-    .users tag config o -foreground red -image [circle red]
-    .users tag config h -foreground pink -image [polygon pink 5]
-    .users tag config v -foreground blue -image [polygon blue 4]
-    .users tag config user -foreground black -image [blankicon]
+    .users tag config q -foreground gray -image [image create photo -format png -data $::ownericon]
+    .users tag config a -foreground orange -image [image create photo -format png -data $::adminicon]
+    .users tag config o -foreground red -image [image create photo -format png -data $::opsicon]
+    .users tag config h -foreground pink -image [image create photo -format png -data $::halfopsicon]
+    .users tag config v -foreground blue -image [image create photo -format png -data $::voiceicon]
+    .users tag config user -foreground black -image [image create photo -format png -data $::blankicon]
     .users column "#0" -width 140
     bind .users <Double-Button-1> {userclick}
     ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
@@ -1078,9 +1060,24 @@ proc setcurrenttopic {} {
     focus .cmd
 }
 
-if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
+proc irken {} {
     initvars
     loadconfig
     initui
     initnetwork
 }
+
+# Embedded png icons - terrible, but not as terrible as a graphic library dependency
+set ::servericon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAACaUlEQVQ4jXVTv0/bQBT+zrEdObIrtbJEHKWiRSVThFBRIwQd24GCmkwsVbcO/TH2H/CG1G6IlY2lJQ2txNalW1GGdCgRgiFhKI1ARiaJrIt9Z18HsIUpfNJb7t733fvee0dwga2trXuqqn7Wdf2+JEkC18DzPOr7/qtqtfo9PiMX5GVd11fL5fKYqqoQ4lo+AGB/f991HOdTtVp9AwDSxfmzmZmZsVwuh0wmA1mWb4ypqanbAJ7EghIAcM4BAFEUYe/vHjzqQQiRxOnpKYIgwPHx8TlJkkhKgDEGxhjaf9ro3VnGl8M1cM5TwRhDGIbgnMNxHNMwDBMAZADJRUEvoNV5gbvaQzDGEt8nJydQFAW9Xg+maYIQopTL5W/z8/M7cmyBMQY5I6NWfIvLtgBgfHwcADA5OQnOOWRZJoVCwVxaWrqVqoCQxNqNEELAdV2p1Wp9WFlZOa9ACAHGGBzHSSVLkgTTNBEEAVRVRRAE0DQNhmEcdbvd9W63i8RCGIYoFospgSiKMBqN4LouDMPA2dkZLMsC5zxZlMQCYwz9fj8h7+7uglKKiYkJMMagaRo8z0MQBKlFky4LxCPr9/tQVRULCwvodDpx55HP55O8VAWj0ehru91+rmmaBACDwUDJ5/MaIYRQSsXBwcEw/h9RFAlK6Y9YIGm7bdu5bDab5Zw/sizrY6VSedBsNpXZ2dmj7e3tQ0LIyyiKPN/3Q9u2B/8JxNjY2Fidm5t73Gg0fM/z1kql0rtKpaLU6/VflNLXtm1Hl/MzV2ZsWJb1dHNz8/dwOHxv2/bP6enpHue8VKvVmouLiztXH/wHBL5LdDruUzgAAAAASUVORK5CYII=}
+set ::channelicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAF6SURBVCjPZU9NM0IBFH3MsCpj7CztLPwIW6z9DEsbKxvGWDRGU6ZhwcI0pSTTxCPivTeiKU3RF0l59V56pFKiJsc14+uNe+Zu7j3n3nMYRlXsgJcPKj55fz7Qxfwvq4bPvaCOGuSm26RWDnF+/tI1IzUbKEGmFpTpzj8ELvtKyoOahCcoyKMA36Oj92ft1AaVKu7hb0TfirTOUu8WVRf280WI4EqHJRFpXCMDW0LlwX4Wp/FmwXoefk8iCU9zfVxFcE3YsYVt1jZoa/vBw15Vrb0a1izSZza4Mxwqu+EFe2vt/j7e79o4luVWhf4KCLQVxHEDseXJuqecWiI4eAkVCicghjJe8EwRP/GAdGtPso4xllQGUVJ5KWYeEiGPO9wiRabvYDlhzLkYTuHHEXkPEzFOl6K4QAQhIpmvGOOyUVqru8DRSKD+hYAE1kVyoeubHdUtrNQ22w7SXn4hglU4Kib+J+piz8KkntOnDBljbkk0pPVxvX1uBB0fzyc6FzEmMTIAAAAASUVORK5CYII=}
+set ::usericon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAAmJLR0QA/4ePzL8AAAD/SURBVBgZlcHLSgJhGIDhL2gC9x0uqJZuhIKCrqEbCLqGTouoXVKB0VDhppXS4IwLReefLM1Bp0wN7cQEEha9rUShv0XPI/+SmLCjdjRniN7llO92aXPtpiZFx9t755VHGuR2Rcc7eeaJFnUKZ6KTXW/zQICPvSM6F4vVvk+Fq8/ksuhZQQkPqyl/yZsZLAqn8ltqPLNy47T6t5Spf5TS6SXGZFQh2/l+I+SFDk3u8L+clAwdznhhjYCAgBpVynjkwv1pGTiYK5JHoVAoFIo8RY5mZWBrwemlUSgUCoXCwultzsvQWmwjGXePG2bX7Cbu4+72+WpMNAyJSEQMGfED1Mesk3W69Y4AAAAASUVORK5CYII=}
+set ::blankicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAEklEQVQ4jWNgGAWjYBSMAggAAAQQAAF/TXiOAAAAAElFTkSuQmCC}
+set ::opsicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAy0lEQVQ4jcXSQUoDQRCF4c+QASV9EmPMXoagqNdJ7haCK0VyA5XcIE72DRFlEMZFkMjQmRlwkQe1aLrfT1X149g6qZ0zXGOECis847sLbBLYjIgzyhnlBTFQIO9i/nigqmq1oBqwbYJkgU3K/BcSeEc/BbgfEw+Zf2tIxG3d3MPlDWdtM95xinEK8C/18PrEZ9vDR77wkrrLAsWiYf75bolrB5YI+YBtCjLff+NVW5d5oBgSp5RTyvNdkNZN5nqU+/ZRhjcsdYzycfQDtB1ssjiVxGkAAAAASUVORK5CYII=}
+set ::voiceicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAcElEQVQ4jc2SOwqAMBAFB0vjkRSC95aAHklTr0USsFjNRxAXHmkyA29Z+OvYmFbY+JB6yQTmgEVgExg8MDfAElMuUeByiQ19nQKnOLnbSRcekXzD5z8j9LteYZVQL78HRVIOK5J6OI19c0gXSTv87ZxXSlezPrPf8wAAAABJRU5ErkJggg==}
+set ::ownericon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAYFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBQUHBwcHBwcHBwcICAgICAgICAgHBwcKCgoPDw8GBgYGBgYtLS0sLCwtLS1GRkZHR0dHR0dmZmZ0dHR1dXV3d3d9fX2AgID///9uPZFLAAAAGXRSTlMAECQnKCtKlJWWv7/BxtDd9PX29vf4/Pz9+gKGIQAAAAFiS0dEHwUNEL0AAABVSURBVBjTY2AgBzDy8QMBHyNcgENEEghEOWF8FiFpOSCQEWSFCvCIy4GBBC+EzyYgCxGQFWDDLsDABdUixg01g0lICsSXFmKGWcMuDLJWhAO3w0gFADKmB8TUOG0DAAAAAElFTkSuQmCC}
+set ::adminicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAAwUlEQVQ4jc2SPw4BYRDFf9ZmsSSocAFROorGESTcQUehcAEFiYRGo9O5AUqJagsSLTa7rH+fQrObrPCtgpdMMTN5b15mBv4NMVlC2JMoGEKwAZZBHYhCDisdZwEUAwncBoh+lXtKx05EGQEZKQExfIbZRdRLOLqGrak0gIgfIeQj4MFqC7Ue1txgfzhSASbuvvK5NYRfXX1F2NnQHON0plyugtbpTBtw3g76eon5LGZSZ0aQM4YV1kBZmuiC9Cv/Hg+kzEMtu4oFIwAAAABJRU5ErkJggg==}
+set ::halfopsicon {iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAZlBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAwMNCQkJBwcJBwkPCwwPDAwNCwswJCYIBgcKCAhGNTgHBgYTDg8HBQWPa3GOa3FcRUmLaW/PnKXhqbPnrrjqsLr+v8r/wMv///+JHHLqAAAAGXRSTlMABAUHIjU3Q0pajZCQp67T7/Pz9PX1+vz949IxUAAAAAFiS0dEIcRsDRYAAABJSURBVBjTY2AgEjCyIvOYOXgFxTjhXDY+EQEJGWkhFpgAt6SsAhCI8zNBBXikQHwFeWEuVAEFOVF2/AIILRiGYliL4TAsTscPAEbMB+2tsxn5AAAAAElFTkSuQmCC}
+set ::irkenicon {iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAMAAAC6V+0/AAAATlBMVEUAAAD/v4D/35//1Zz/15f/1pj/2Zn/2Jz/2Zv/15v/15v/2Zv/2Jz/2Zv/2Jv/2Zv/2Zv/2Jv/2Jr/2Jv/2Jv/2Zv/2Jv/2Jv/2Jv///9JcTGKAAAAGHRSTlMABAgSICU8SEpmc3+IkpeZs83Q3d7o+v4PPFCqAAAAAWJLR0QZ7G61iAAAAEBJREFUGNNj4OFHBRwMQCCBBviGvKCgMAyIgsREuBhQACMvUJCdAR1wikkIYAgysImKs2KKsghxYwoyMDEzUAwA7hYS0qRY31oAAAAASUVORK5CYII=}
+
+# Start up irken when executed as file
+if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {irken}

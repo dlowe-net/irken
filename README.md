@@ -28,11 +28,10 @@ Running
 
 These instructions are for Linux.  Windows support is unlikely.
 
-1. Install `tcl`, `tcl-tls`, `bwidget`, and `librsvg2-bin` - you need
-   at least version 8.6 of TCL.  For systems based on Debian (like
-   Ubuntu or Linux Mint), you can run `sudo apt install tcl tcl-tls
-   bwidget librsvg2-bin`.  Feel free to contribute instructions for
-   other distributions.
+1. Install `tcl`, `tcl-tls`, and `bwidget` - you need at least version
+   8.6 of TCL.  For systems based on Debian (like Ubuntu or Linux
+   Mint), you can run `sudo apt install tcl tcl-tls bwidget`.  Feel
+   free to contribute instructions for other distributions.
 2. Copy or symlink any desired plugins into into `~/.config/irken/`  You may
    have to make the directory.
 3. Run `irken.tcl`. By default, it will create a configuration file that
