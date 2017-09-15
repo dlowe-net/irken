@@ -54,7 +54,6 @@ proc ischannel {chanid} {
 
 proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
-set ::nickprefixes "@%+&~"
 set ::codetagcolormap [dict create 0 white 1 black 2 navy 3 green 4 red 5 maroon 6 purple 7 olive 8 yellow 9 lgreen 10 teal 11 cyan 12 blue 13 magenta 14 gray 15 lgray {} {}]
 set ::tagcolormap [dict create white white black black navy navy green green red red maroon maroon purple purple olive {dark olive green} yellow gold lgreen {spring green} teal {pale turquoise} cyan deepskyblue blue blue magenta magenta gray gray lgray {light grey} {} {}]
 
@@ -208,12 +207,11 @@ proc irctolower {casemapping str} {
 }
 proc ircstrcmp {casemapping a b} {return [string compare [irctolower $casemapping $a] [irctolower $casemapping $b]]}
 proc irceq {casemapping a b} {return [expr {[ircstrcmp $casemapping $a $b] == 0}]}
+proc foldl {cmd list} {set r [lindex $list 0];foreach e [lrange $list 1 end] {set r [apply $cmd $r $e]};return $r}
+proc min {list} {foldl {{a b} {expr {$a < $b ? $a:$b}}} $list}
 proc rankeduser {serverid entry} {
-    regexp -- "^\\((\[^\)\]*)\\)" [dict get $::serverinfo $serverid prefix] -> modes
-    if {[set rank [string first [lindex $entry 1 0] $modes]] == -1} {
-        set rank 9
-    }
-    return $rank[lindex $entry 0]
+    set modes [concat [dict values [dict get $::serverinfo $serverid prefix]] [list {}]]
+    return [min [lmap m [lindex $entry 1] {lsearch $m $modes}][lindex $entry 0]]
 }
 proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $serverid $a] [rankeduser $serverid $b]]}
 proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid nick] $nick]}
@@ -309,10 +307,9 @@ proc setchanusers {chanid users} {
 
 # users should be {nick modes}
 proc addchanuser {chanid user modes} {
-    regexp -- "^\\((\[^\)\]*)\\)(.*)" [dict get $::serverinfo [serverpart $chanid] prefix] -> servermodes prefixes
-    regexp -- "^(\[$prefixes\]*)(.*)" $user -> userprefixes nick
-
-    set usermodes [concat $modes [lmap uprefix [split $userprefixes ""] {string index $servermodes [string first $uprefix $prefixes]}]]
+    set prefixes [dict get $::serverinfo [serverpart $chanid] prefix]
+    regexp -- "^(\[[join [dict keys $prefixes] ""]\]*)(.*)" $user -> userprefixes nick
+    set usermodes [concat $modes [lmap uprefix [split $userprefixes ""] {dict get $prefixes $uprefix}]]
     set userentry [list $nick $usermodes]
     set users [dict get $::channelinfo $chanid users]
     if {[set pos [lsearch -exact -index 0 $users $nick]] != -1} {
@@ -337,12 +334,13 @@ proc addchanuser {chanid user modes} {
 
 proc remchanuser {chanid user} {
     if {[dict exists $::channelinfo $chanid]} {
-        set user [string trimleft $user $::nickprefixes]
+        set prefixes [dict keys [dict get $::serverinfo [serverpart $chanid] prefix]]
+        set nick [string trimleft $user $prefixes]
         set users [dict get $::channelinfo $chanid users]
-        if {[set idx [lsearch -exact -index 0 $users $user]] != -1} {
+        if {[set idx [lsearch -exact -index 0 $users $nick]] != -1} {
             dict set ::channelinfo $chanid users [lreplace $users $idx $idx]
             if {$chanid eq $::active} {
-                .users delete $user
+                .users delete $nick
             }
         }
     }
@@ -594,7 +592,7 @@ proc removechan {chanid} {
     .nav delete $chanid
 }
 
-set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200" prefix "(ov)@+"]
+set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200" prefix [dict create @ o + v]]
 
 proc connect {serverid} {
     if {[catch {dict get $::config $serverid -host} host]} {
@@ -654,7 +652,15 @@ hook handle005 irken 50 {serverid msg} {
     foreach param [dict get $msg args] {
         lassign [split $param "="] key val
         if {[lsearch -exact {CASEMAPPING CHANTYPES CHANNELLEN PREFIX} $key] != -1} {
-            dict set ::serverinfo $serverid [string tolower $key] $val
+            switch -- $key {
+                "PREFIX" {
+                    if {[regexp -- "^\\((\[^\)\]*)\\)(.*)" $val -> modes prefixes]} {
+                        dict set ::serverinfo $serverid prefix \
+                            [dict create {*}[concat {*}[lmap p $prefixes m $modes {list $p $m}]]]
+                    }
+                }
+                default {dict set ::serverinfo $serverid [string tolower $key] $val}
+            }
         }
     }
 }
@@ -745,7 +751,7 @@ hook handleMODE irken 50 {serverid msg} {
     } else {
         addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" italic
     }
-    regexp -- "^\\((\[^\)\]*)\\)" [dict get $::serverinfo $serverid prefix] -> modes
+    set modes [dict values [dict get $::serverinfo $serverid prefix]]
     if {[ischannel $chanid]} {
         lassign {} changes params
         foreach arg $args {
@@ -756,7 +762,7 @@ hook handleMODE irken 50 {serverid msg} {
             }
         }
         foreach change $changes {
-            if {[string first [lindex $change 1] $modes] != -1}  {
+            if {[lsearch $modes [lindex $change 1]] != -1}  {
                 set params [lassign $params param]
                 set usermodes [lindex [lsearch -inline -index 0 -exact [dict get $::channelinfo $chanid users] $param] 1]
                 if {[lindex $change 0] eq "+"} {
@@ -847,7 +853,7 @@ hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg ar
 hook handlePRIVMSG irken-privmsg 0 {serverid msg} {
     # We handle privmsgs specially here, since there's some duplicate
     # work between a CTCP ACTION and a normal PRIVMSG.
-    dict set msg chan [string trimleft [lindex [dict get $msg args] 0] $::nickprefixes]
+    dict set msg chan [lindex [dict get $msg args] 0]
     if {[isself $serverid [dict get $msg chan]]} {
         # direct message - so chan is source, not target
         dict set msg chan [dict get $msg src]
