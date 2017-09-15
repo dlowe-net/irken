@@ -98,6 +98,13 @@ test ircstrcmp {} {
     assert {[ircstrcmp "strict-rfc1459" "foo\[\]^" "foo\{\}~"] != 0}
 }
 
+test rankeduser {} {
+    dict set ::serverinfo "TestServer" prefix {@ o + v}
+    asserteq [rankeduser "TestServer" [list foo [list o v]]] "0foo"
+    asserteq [rankeduser "TestServer" [list foo [list v]]] "1foo"
+    asserteq [rankeduser "TestServer" [list foo {}]] "2foo"
+}
+
 test colorcode {} {
     asserteq [colorcode "normal text"] [list "normal text" {}]
     asserteq [colorcode "\x02normal \x02text"] [list "normal text" {{0 push bold} {7 pop bold}}]

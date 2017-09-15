@@ -210,8 +210,8 @@ proc irceq {casemapping a b} {return [expr {[ircstrcmp $casemapping $a $b] == 0}
 proc foldl {cmd list} {set r [lindex $list 0];foreach e [lrange $list 1 end] {set r [apply $cmd $r $e]};return $r}
 proc min {list} {foldl {{a b} {expr {$a < $b ? $a:$b}}} $list}
 proc rankeduser {serverid entry} {
-    set modes [concat [dict values [dict get $::serverinfo $serverid prefix]] [list {}]]
-    return [min [lmap m [lindex $entry 1] {lsearch $m $modes}][lindex $entry 0]]
+    set modes [dict values [dict get $::serverinfo $serverid prefix]]
+    return [min [linsert [lmap m [lindex $entry 1] {lsearch $modes $m}] end [llength $modes]]][lindex $entry 0]
 }
 proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $serverid $a] [rankeduser $serverid $b]]}
 proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid nick] $nick]}
