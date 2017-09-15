@@ -54,10 +54,10 @@ proc ischannel {chanid} {
 
 proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
-proc icon {path} { return [image create photo -format png -data [exec -- convert -background none -geometry 16x16 $path "png:-" | base64]] }
+proc icon {path} { return [image create photo -format png -data [exec -- rsvg -w 16 -h 16 $path /dev/stdout | base64]] }
 proc svg {width height paths} {
     set svg "<svg width=\"$width\" height=\"$height\" xmlns=\"http://www.w3.org/2000/svg\">$paths</svg>"
-    return [image create photo -format png -data [exec -- convert -background none "svg:-" "png:-" | base64 <<$svg]]
+    return [image create photo -format png -data [exec -- rsvg /dev/stdin /dev/stdout | base64 <<$svg]]
 }
 proc circle {color} {return [svg 16 16 "<circle cx=\"6\" cy=\"8\" r=\"5\" stroke=\"black\" fill=\"$color\"/>"]}
 proc polygon {color sides} {

@@ -28,14 +28,14 @@ Running
 
 These instructions are for Linux.  Windows support is unlikely.
 
-1. Install `tcl`, `tcl-tls`, and `bwidget` - you need at least version 8.6 of TCL.
-2. SVG rendering for icons currently depends on Imagemagick, which for some bizarre
-reason requires the Q16 "extra" codec for SVG to work.  Running `apt search
-'libmagickcore q16 extra'` should find the correct package to install on
-debian-based distributions.
-3. Copy or symlink any desired plugins into into `~/.config/irken/`  You may
+1. Install `tcl`, `tcl-tls`, `bwidget`, and `librsvg2-bin` - you need
+   at least version 8.6 of TCL.  For systems based on Debian (like
+   Ubuntu or Linux Mint), you can run `sudo apt install tcl tcl-tls
+   bwidget librsvg2-bin`.  Feel free to contribute instructions for
+   other distributions.
+2. Copy or symlink any desired plugins into into `~/.config/irken/`  You may
    have to make the directory.
-4. Run `irken.tcl`. By default, it will create a configuration file that
+3. Run `irken.tcl`. By default, it will create a configuration file that
    connects you to freenode.net and joins the #tcl channel.
 
 Configuration
