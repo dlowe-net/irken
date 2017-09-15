@@ -129,7 +129,7 @@ proc initui {} {
     .t tag config nick -foreground steelblue
     .t tag config self   -foreground gray30
     .t tag config highlight  -foreground green
-    .t tag config warning  -foreground red -font Irken.FixedItalic
+    .t tag config system  -font Irken.FixedItalic
     .t tag config italic -font Irken.FixedItalic
     .t tag config bold -font Irken.FixedBold
     .t tag config bolditalic -font Irken.FixedBoldItalic
@@ -503,7 +503,7 @@ proc addchantext {chanid nick text args} {
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
         .nav tag add unseen $chanid
-        if {$nick ne "*"} {
+        if {[lsearch -exact $args system] == -1} {
             .nav tag add message $chanid
         }
         if {[lsearch -exact $args highlight] != -1} {
@@ -595,21 +595,21 @@ set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "
 
 proc connect {serverid} {
     if {[catch {dict get $::config $serverid -host} host]} {
-        addchantext $serverid "*" "Fatal error: $serverid has no -host option $host.\n" italic
+        addchantext $serverid "*" "Fatal error: $serverid has no -host option $host.\n" system
         return
     }
     if {![dict exists $::config $serverid -nick]} {
-        addchantext $serverid "*" "Fatal error: $serverid has no -nick option.\n" italic
+        addchantext $serverid "*" "Fatal error: $serverid has no -nick option.\n" system
         return
     }
     if {![dict exists $::config $serverid -user]} {
-        addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" italic
+        addchantext $serverid "*" "Fatal error: $serverid has no -user option.\n" system
         return
     }
     set insecure [dict get? 0 $::config $serverid -insecure]
     set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
-    addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" italic
+    addchantext $serverid "*" "Connecting to $serverid ($host:$port)...\n" system
     set fd [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
@@ -623,7 +623,7 @@ proc connected {fd} {
     fileevent $fd writable {}
     set serverid [dict get $::servers $fd]
     .nav tag remove disabled $serverid
-    addchantext $serverid "*" "Connected.\n" italic
+    addchantext $serverid "*" "Connected.\n" system
     send $serverid "CAP REQ :multi-prefix"
     if {[dict exists $::config $serverid -pass]} {
         send $serverid "PASS [dict get $::config $serverid -pass]"
@@ -638,7 +638,7 @@ proc disconnected {fd} {
     fileevent $fd readable {}
 
     .nav tag add disabled $serverid
-    addchantext $serverid "*" "Disconnected.\n" italic
+    addchantext $serverid "*" "Disconnected.\n" system
 }
 
 hook handle001 irken 50 {serverid msg} {
@@ -665,34 +665,34 @@ hook handle005 irken 50 {serverid msg} {
 }
 hook handle301 irken 50 {serverid msg} {
     lassign [dict get $msg args] nick awaymsg
-    addchantext [chanid $serverid $nick] "*" "$nick is away: $awaymsg\n" italic
+    addchantext [chanid $serverid $nick] "*" "$nick is away: $awaymsg\n" system
 }
 hook handle305 irken 50 {serverid msg} {
-    addchantext $::active "*" "You are no longer marked as being away.\n" italic
+    addchantext $::active "*" "You are no longer marked as being away.\n" system
 }
 hook handle306 irken 50 {serverid msg} {
-    addchantext $::active "*" "You have been marked as being away.\n" italic
+    addchantext $::active "*" "You have been marked as being away.\n" system
 }
 hook handle331 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     setchantopic $chanid ""
-    addchantext $chanid "*" "No channel topic set.\n" italic
+    addchantext $chanid "*" "No channel topic set.\n" system
 }
 hook handle332 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
     if {$topic ne ""} {
-        addchantext $chanid "*" "Channel topic: $topic\n" italic
+        addchantext $chanid "*" "Channel topic: $topic\n" system
     } else {
-        addchantext $chanid "*" "No channel topic set.\n" italic
+        addchantext $chanid "*" "No channel topic set.\n" system
     }
 }
 hook handle333 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set nick [lindex [dict get $msg args] 1]
     set time [lindex [dict get $msg args] 2]
-    addchantext $chanid "*" "Topic set by $nick at [clock format $time].\n" italic
+    addchantext $chanid "*" "Topic set by $nick at [clock format $time].\n" system
 }
 hook handle353 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
@@ -702,7 +702,7 @@ hook handle353 irken 50 {serverid msg} {
 }
 hook handle366 irken 50 {serverid msg} {return}
 hook handle372 irken 50 {serverid msg} {
-    addchantext $serverid "*" "[dict get $msg trailing]\n" italic
+    addchantext $serverid "*" "[dict get $msg trailing]\n" system
 }
 hook handle376 irken 50 {serverid msg} {return}
 hook handleJOIN irken 50 {serverid msg} {
@@ -718,7 +718,7 @@ hook handleJOIN irken-display 75 {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
     if {![isself $serverid [dict get $msg src]]} {
-        addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" italic
+        addchantext $chanid "*" "[dict get $msg src] has joined $chan\n" system
     }
 }
 hook handleKICK irken 50 {serverid msg} {
@@ -736,9 +736,9 @@ hook handleKICK irken-display 75 {serverid msg} {
     }
     set chanid [chanid $serverid $chan]
     if {[isself $serverid $target]} {
-        addchantext $chanid "*" "[dict get $msg src] kicks you from $chan.$note\n" italic
+        addchantext $chanid "*" "[dict get $msg src] kicks you from $chan.$note\n" system
     } else {
-        addchantext $chanid "*" "[dict get $msg src] kicks $target from $chan.$note\n" italic
+        addchantext $chanid "*" "[dict get $msg src] kicks $target from $chan.$note\n" system
     }
 }
 hook handleMODE irken 50 {serverid msg} {
@@ -746,9 +746,9 @@ hook handleMODE irken 50 {serverid msg} {
     set chanid [chanid $serverid $target]
     set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
     if {[lsearch -exact [dict get $msg src] "!"] == -1} {
-        addchantext $msgdest "*" "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" italic
+        addchantext $msgdest "*" "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" system
     } else {
-        addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" italic
+        addchantext $msgdest "*" "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" system
     }
     set modes [dict values [dict get $::serverinfo $serverid prefix]]
     if {[ischannel $chanid]} {
@@ -815,11 +815,11 @@ hook handleNICK irken-display 75 {serverid msg} {
         if {$user eq ""} {
             return
         }
-        addchantext $chanid "*" "$oldnick is now known as $newnick\n" italic
+        addchantext $chanid "*" "$oldnick is now known as $newnick\n" system
     }
     set newchanid [chanid $serverid $newnick]
     if {[dict exists $::channelinfo $newchanid]} {
-        addchantext $newchanid "*" "$oldnick is now known as $newnick\n" italic
+        addchantext $newchanid "*" "$oldnick is now known as $newnick\n" system
     }
 }
 hook handleNOTICE irken 50 {serverid msg} {
@@ -842,10 +842,10 @@ hook handlePART irken-display 75 {serverid msg} {
     set chanid [chanid $serverid $chan]
     if {[isself $serverid [dict get $msg src]]} {
         if {[dict exists $::channelinfo $chanid]} {
-            addchantext $chanid "*" "You have left $chan.$note\n" italic
+            addchantext $chanid "*" "You have left $chan.$note\n" system
         }
     } else {
-        addchantext $chanid "*" "[dict get $msg src] has left $chan.$note\n" italic
+        addchantext $chanid "*" "[dict get $msg src] has left $chan.$note\n" system
     }
 }
 hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
@@ -886,17 +886,17 @@ hook handleQUIT irken 50 {serverid msg} {
 hook handleQUIT irken-display 75 {serverid msg} {
     set note [expr {[dict exists $msg trailing] ? " ([dict get $msg trailing])":""}]
     foreach chanid [dict get $msg affectedchans] {
-        addchantext $chanid "*" "[dict get $msg src] has quit$note\n" italic
+        addchantext $chanid "*" "[dict get $msg src] has quit$note\n" system
     }
 }
 hook handleTOPIC irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
     setchantopic $chanid $topic
-    addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" italic
+    addchantext $chanid "*" "[dict get $msg src] sets title to $topic\n" system
 }
 hook handleUnknown irken 50 {serverid msg} {
-    addchantext $serverid "*" "[dict get $msg line]\n" italic
+    addchantext $serverid "*" "[dict get $msg line]\n" system
 }
 
 hook ctcpACTION irken 50 {serverid msg text} {
@@ -963,11 +963,11 @@ proc recv {fd} {
 hook cmdCLOSE irken 50 {serverid arg} {
     set chanid [expr {[llength $arg] > 0 ? [chanid $serverid [lindex $arg 0]]:$::active}]
     if {![dict exists $::channelinfo $chanid]} {
-        addchantext $::active "*" "No such channel [lindex $arg 0]\n" italic
+        addchantext $::active "*" "No such channel [lindex $arg 0]\n" system
         return -code break
     }
     if {[channelpart $chanid] eq ""} {
-        addchantext $::active "*" "Closing a server window is not allowed.\n" italic
+        addchantext $::active "*" "Closing a server window is not allowed.\n" system
         return -code break
     }
     if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
@@ -976,7 +976,7 @@ hook cmdCLOSE irken 50 {serverid arg} {
     removechan $chanid
 }
 hook cmdEVAL irken 50 {serverid arg} {
-    addchantext $::active "*" "$arg -> [eval $arg]\n" italic
+    addchantext $::active "*" "$arg -> [eval $arg]\n" system
 }
 hook cmdME irken 50 {serverid arg} { sendmsg $serverid [channelpart $::active] "\001ACTION $arg\001"}
 hook cmdJOIN irken 50 {serverid arg} {
@@ -996,18 +996,18 @@ hook cmdMSG irken 50 {serverid arg} {
 }
 hook cmdQUERY irken 50 {serverid arg} {
     if {$arg eq ""} {
-        addchantext $::active "*" "Query: missing nick.\n" italic
+        addchantext $::active "*" "Query: missing nick.\n" system
         return -code break
     }
     if {[ischannel $arg]} {
-        addchantext $::active "*" "Can't query a channel.\n" italic
+        addchantext $::active "*" "Can't query a channel.\n" system
         return -code break
     }
     ensurechan $serverid $arg {}
 }
 hook cmdRELOAD irken 50 {serverid arg} {
     source $::argv0
-    addchantext $::active "*" "Irken reloaded.\n" italic
+    addchantext $::active "*" "Irken reloaded.\n" system
 }
 hook cmdSERVER irken 50 {serverid arg} {
     if {![dict exists $::config $arg]} {
