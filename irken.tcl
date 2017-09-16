@@ -905,30 +905,30 @@ hook ctcpACTION irken 50 {serverid msg text} {
 }
 hook ctcpCLIENTINFO irken 50 {serverid msg text} {
     if {$text eq ""} {
-        addchantext $serverid "*" "CTCP CLIENTINFO request from [dict get $msg src]\n"
+        addchantext $serverid "*" "CTCP CLIENTINFO request from [dict get $msg src]\n" system
         send $serverid "PRIVMSG [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
     } else {
-        addchantext $serverid "*" "CTCP CLIENTINFO reply from [dict get $msg src]: $text\n"
+        addchantext $serverid "*" "CTCP CLIENTINFO reply from [dict get $msg src]: $text\n" system
     }
 }
 hook ctcpPING irken 50 {serverid msg text} {
-    addchantext $serverid "*" "CTCP PING request from [dict get $msg src]: $text\n"
+    addchantext $serverid "*" "CTCP PING request from [dict get $msg src]: $text\n" system
     send $serverid "PRIVMSG [dict get $msg src] :\001PING $text\001"
 }
 hook ctcpTIME irken 50 {serverid msg text} {
     if {$text eq ""} {
-        addchantext $serverid "*" "CTCP TIME request from [dict get $msg src]\n"
+        addchantext $serverid "*" "CTCP TIME request from [dict get $msg src]\n" system
         send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format -gmt 1 [clock seconds]]\001"
     } else {
-        addchantext $serverid "*" "CTCP TIME reply from [dict get $msg src]: $text\n"
+        addchantext $serverid "*" "CTCP TIME reply from [dict get $msg src]: $text\n" system
     }
 }
 hook ctcpVERSION irken 50 {serverid msg text} {
     if {$text eq ""} {
-        addchantext $serverid "*" "CTCP VERSION request from [dict get $msg src]\n"
+        addchantext $serverid "*" "CTCP VERSION request from [dict get $msg src]\n" system
         send $serverid "PRIVMSG [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
     } else {
-        addchantext $serverid "*" "CTCP VERSION reply from [dict get $msg src]: $text\n"
+        addchantext $serverid "*" "CTCP VERSION reply from [dict get $msg src]: $text\n" system
     }
 }
 
@@ -1011,7 +1011,7 @@ hook cmdRELOAD irken 50 {serverid arg} {
 }
 hook cmdSERVER irken 50 {serverid arg} {
     if {![dict exists $::config $arg]} {
-        addchantext $::active "*" "$arg is not a server.\n" {} $::config
+        addchantext $::active "*" "$arg is not a server.\n" system
         return
     }
     connect $arg
@@ -1029,7 +1029,7 @@ proc docmd {serverid chan cmd arg} {
 
 proc sendmsg {serverid chan text} {
     if {[channelpart $::active] eq ""} {
-        addchantext $::active "*" "This isn't a channel.\n"
+        addchantext $::active "*" "This isn't a channel.\n" system
         return
     }
     foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
@@ -1043,7 +1043,7 @@ proc sendmsg {serverid chan text} {
 
 proc returnkey {} {
     if {![dict exists $::serverinfo [serverpart $::active]]} {
-        addchantext $::active "*" "Server is disconnected.\n"
+        addchantext $::active "*" "Server is disconnected.\n" system
         return
     }
     set msg [.cmd get]
@@ -1058,7 +1058,7 @@ proc returnkey {} {
 
 proc setcurrenttopic {} {
     if {![ischannel $::active]} {
-        addchantext $::active "*" "This isn't a channel.\n"
+        addchantext $::active "*" "This isn't a channel.\n" system
         return
     }
     send [serverpart $::active] "TOPIC [channelpart $::active] :[.topic get]"
