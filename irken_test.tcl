@@ -149,8 +149,8 @@ test ischannel {} {
 }
 
 test addchantext {irken_fixture} {
-    addchantext "TestServer/#test" "tester" "This is a test."
-    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\ttester\t" "nick" "This is a test." {}]
+    addchantext "TestServer/#test" "This is a test." -nick "tester" -tags self
+    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\ttester\t" "nick" "This is a test." {self line}]
 }
 
 test addchanuser {irken_fixture} {

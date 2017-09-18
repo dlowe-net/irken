@@ -27,7 +27,7 @@ proc updateignoreconf {} {
         puts $fp "ignorenicks $::ignorelist"
         close $fp
     } else {
-        addchantext $::active "*" "Warning: unable to write to $::ignoreconfpath\n" fg_red italic
+        addchantext $::active "Warning: unable to write to $::ignoreconfpath\n" -tags {fg_red italic}
     }
 }
 
@@ -70,17 +70,17 @@ hook handleQUIT ignore 60 {serverid msg} {
 hook cmdIGNORE ignore 50 {serverid arg} {
     if {$arg eq ""} {
         if {[llength $::ignorelist] == 0} {
-            addchantext $::active "*" "You are not ignoring anyone.\n" italic
+            addchantext $::active "You are not ignoring anyone.\n" -tags italic
         } else {
-            addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
+            addchantext $::active "Ignoring: $::ignorelist\n" -tags italic
         }
         return
     }
     set targets [ignorenicks [split $arg " "]]
     if {$targets eq ""} {
-        addchantext $::active "*" "No nicks added to ignore list.\n" italic
+        addchantext $::active "No nicks added to ignore list.\n" -tags italic
     } else {
-        addchantext $::active "*" "Added to ignore list: $targets\n" italic
+        addchantext $::active "Added to ignore list: $targets\n" -tags italic
         updateignoreconf
     }
 }
@@ -88,9 +88,9 @@ hook cmdIGNORE ignore 50 {serverid arg} {
 hook cmdUNIGNORE ignore 50 {serverid arg} {
     if {$arg eq ""} {
         if {[llength $::ignorelist] == 0} {
-            addchantext $::active "*" "You are not ignoring anyone.\n" italic
+            addchantext $::active "You are not ignoring anyone.\n" -tags italic
         } else {
-            addchantext $::active "*" "Ignoring: $::ignorelist\n" italic
+            addchantext $::active "Ignoring: $::ignorelist\n" -tags italic
         }
         return
     }
@@ -102,9 +102,9 @@ hook cmdUNIGNORE ignore 50 {serverid arg} {
         }
     }
     if {$targets eq ""} {
-        addchantext $::active "*" "No nicks removed from ignore list.\n" italic
+        addchantext $::active "No nicks removed from ignore list.\n" -tags italic
     } else {
-        addchantext $::active "*" "Removed from ignore list: $targets\n" italic
+        addchantext $::active "Removed from ignore list: $targets\n" -tags italic
         updateignoreconf
     }
 }
