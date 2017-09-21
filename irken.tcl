@@ -863,10 +863,10 @@ hook handlePART irken-display 75 {serverid msg} {
     }
 }
 hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
-hook handlePRIVMSG irken-privmsg 0 {serverid msg} {
+hook handlePRIVMSG irken-privmsg 20 {serverid msg} {
     # We handle privmsgs specially here, since there's some duplicate
     # work between a CTCP ACTION and a normal PRIVMSG.
-    dict set msg chan [lindex [dict get $msg args] 0]
+    dict set msg chan [string trimleft [lindex [dict get $msg args] 0] [dict keys [dict get $::serverinfo $serverid prefix]]]
     if {[isself $serverid [dict get $msg chan]]} {
         # direct message - so chan is source, not target
         dict set msg chan [dict get $msg src]
@@ -992,7 +992,14 @@ hook cmdCLOSE irken 50 {serverid arg} {
 hook cmdEVAL irken 50 {serverid arg} {
     addchantext $::active "$arg -> [eval $arg]\n" -tags system
 }
-hook cmdME irken 50 {serverid arg} { sendmsg $serverid [channelpart $::active] "\001ACTION $arg\001"}
+hook cmdME irken 50 {serverid arg} {
+    if {[channelpart $::active] eq ""} {
+        addchantext $::active "This isn't a channel.\n" -tags system
+        return
+    }
+    send $serverid "PRIVMSG [channelpart $::active] :\001ACTION $arg\001"
+    addchantext $::active "[dict get $::serverinfo $serverid nick] $arg\n" -tags self
+}
 hook cmdJOIN irken 50 {serverid arg} {
     set chanid [chanid $serverid $arg]
     ensurechan $serverid $arg disabled
@@ -1000,13 +1007,12 @@ hook cmdJOIN irken 50 {serverid arg} {
     send $serverid "JOIN :$arg"
 }
 hook cmdMSG irken 50 {serverid arg} {
-    set target [lrange $arg 0 0]
-    set text [lrange $arg 1 end]
-    send $serverid "PRIVMSG $target :$text"
-
-    set chanid [chanid $serverid $target]
-    ensurechan $serverid $target {}
-    addchantext $chanid "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self
+    regexp -- {^(\S+) (.*)$} $arg -> target text
+    foreach line [split $text \n] {
+        send $serverid "PRIVMSG $target :$text"
+        ensurechan $serverid $target {}
+        addchantext [chanid $serverid $target] "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self
+    }
 }
 hook cmdQUERY irken 50 {serverid arg} {
     if {$arg eq ""} {
@@ -1031,7 +1037,7 @@ hook cmdSERVER irken 50 {serverid arg} {
     connect $arg
 }
 
-proc docmd {serverid chan cmd arg} {
+proc docmd {serverid cmd arg} {
     set hook "cmd[string toupper $cmd]"
     if {[hook exists $hook]} {
         hook call $hook $serverid $arg
@@ -1041,31 +1047,22 @@ proc docmd {serverid chan cmd arg} {
     }
 }
 
-proc sendmsg {serverid chan text} {
-    if {[channelpart $::active] eq ""} {
-        addchantext $::active "This isn't a channel.\n" -tags system
-        return
-    }
-    foreach line [split $text \n] {send $serverid "PRIVMSG $chan :$line"}
-    if {[regexp {^\001ACTION (.+)\001} $text -> text]} {
-        addchantext $::active "[dict get $::serverinfo $serverid nick] $text\n" -tags self
-    } else {
-        addchantext $::active "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self
-    }
-    .t yview end
-}
-
 proc returnkey {} {
     if {![dict exists $::serverinfo [serverpart $::active]]} {
         addchantext $::active "Server is disconnected.\n" -tags system
         return
     }
-    set msg [.cmd get]
-    dict set ::channelinfo $::active cmdhistory [concat [list $msg] [dict get $::channelinfo $::active cmdhistory]]
-    if {[regexp {^/(\S+)\s*(.*)} $msg -> cmd msg]} {
-        docmd [serverpart $::active] [channelpart $::active] [string toupper $cmd] $msg
-    } elseif {$msg ne ""} {
-        sendmsg [serverpart $::active] [channelpart $::active] $msg
+    set text [.cmd get]
+    dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
+    if {[regexp {^/(\S+)\s*(.*)} $text -> cmd text]} {
+        docmd [serverpart $::active] [string toupper $cmd] $text
+    } elseif {$text ne ""} {
+        if {[channelpart $::active] eq ""} {
+            addchantext $::active "This isn't a channel.\n" -tags system
+        } else {
+            hook call cmdMSG [serverpart $::active] "[channelpart $::active] $text"
+            .t yview end
+        }
     }
     .cmd delete 0 end
 }

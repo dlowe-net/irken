@@ -141,5 +141,7 @@ Some useful hooks:
 
 - `handle001` - used for when the user is logged into the server and ready
 - `handlePRIVMSG` - used for when a message is received on a channel or privately
+- `cmdMSG` - used for sending all messages (but not actions) to a channel or
+  privately.
 
 Make sure to look at the included plugins for inspiration!
