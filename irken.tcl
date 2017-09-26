@@ -348,7 +348,7 @@ proc remchanuser {chanid user} {
 }
 
 proc userclick {} {
-    ensurechan [serverpart $::active] [.users selection] {}
+    ensurechan [chanid [serverpart $::active] [.users selection]] [.users selection] {}
     .nav selection set [chanid [serverpart $::active] [.users selection]]
 }
 
@@ -535,8 +535,7 @@ proc addchantext {chanid text args} {
 }
 
 proc selectchan {} {
-    set chanid [.nav selection]
-    if {$chanid eq $::active} {
+    if {[set chanid [.nav selection]] eq $::active} {
         return
     }
     .nav focus $chanid
@@ -567,27 +566,32 @@ proc selectchan {} {
     focus .cmd
 }
 
-proc ensurechan {serverid chan tags} {
-    set chanid [chanid $serverid $chan]
-    set ::channeltext [dict merge [dict create $chanid {}] $::channeltext]
-    if {![dict exists $::channelinfo $chanid]} {
-        dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
-    }
+# ensurechan creates the data structures and ui necessary to support a
+# new channel for the chanid, if the channel does not already exist.
+# If the channel does exist, it updates the channel name in the UI if
+# name is specified.  The name should only be specified in response to
+# server messages, so that it gets the correct capitalization.
+proc ensurechan {chanid name tags} {
     if {[.nav exists $chanid]} {
-        .nav item $chanid -text $chan
+        if {$name ne ""} {
+            .nav item $chanid -text $name
+        }
         return
     }
-    set tag [expr {$chan eq "" ? "server":[ischannel $chanid] ? "channel":"direct"}]
-    if {$chan eq ""} {
-        .nav insert {} end -id $chanid -text $chanid -open True -tag [concat $tag $tags]
-    } else {
-        .nav insert $serverid end -id $chanid -text $chan -tag [concat $tag $tags]
+    set ::channeltext [dict merge [dict create $chanid {}] $::channeltext]
+    dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
+    if {[channelpart $chanid] eq ""} {
+        .nav insert {} end -id $chanid -text $chanid -open True -tag [concat server $tags]
+        return
     }
 
-    set items [lsort [.nav children $serverid]]
+    set tag [expr {[ischannel $chanid] ? "channel":"direct"}]
+    .nav insert [serverpart $chanid] end -id $chanid -text [expr {$name eq "" ? [channelpart $chanid]:$name}] -tag [concat $tag $tags]
+
+    set items [lsort [.nav children [serverpart $chanid]]]
     .nav detach $items
     for {set i 0} {$i < [llength $items]} {incr i} {
-        .nav move [lindex $items $i] $serverid $i
+        .nav move [lindex $items $i] [serverpart $chanid] $i
     }
 }
 
@@ -657,7 +661,7 @@ proc disconnected {fd} {
 
 hook handle001 irken 50 {serverid msg} {
     foreach chan [dict get? {} $::config $serverid -autojoin] {
-        ensurechan $serverid $chan disabled
+        ensurechan [chanid $serverid $chan] "" disabled
         send $serverid "JOIN $chan"
     }
 }
@@ -722,7 +726,7 @@ hook handle376 irken 50 {serverid msg} {return}
 hook handleJOIN irken 50 {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
     set chanid [chanid $serverid $chan]
-    ensurechan $serverid $chan {}
+    ensurechan $chanid $chan {}
     addchanuser $chanid [dict get $msg src] {}
     if {[isself $serverid [dict get $msg src]]} {
         .nav tag remove disabled $chanid
@@ -881,7 +885,7 @@ hook handlePRIVMSG irken 50 {serverid msg} {
         hook call ctcp$cmd $serverid $msg $text
         return -code break
     }
-    ensurechan $serverid [dict get $msg chan] {}
+    ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
     addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]\n" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
 }
 hook handleQUIT irken 50 {serverid msg} {
@@ -967,11 +971,7 @@ proc recv {fd} {
     } else {
         dict set msg time [clock seconds]
     }
-    if {[hook exists handle$cmd]} {
-        hook call handle$cmd $serverid $msg
-    } else {
-        hook call handleUnknown $serverid $msg
-    }
+    hook call [expr {[hook exists handle$cmd] ? "handle$cmd":"handleUnknown"}] $serverid $msg
 }
 
 hook cmdCLOSE irken 50 {serverid arg} {
@@ -1002,7 +1002,7 @@ hook cmdME irken 50 {serverid arg} {
 }
 hook cmdJOIN irken 50 {serverid arg} {
     set chanid [chanid $serverid $arg]
-    ensurechan $serverid $arg disabled
+    ensurechan $chanid "" disabled
     .nav selection set $chanid
     send $serverid "JOIN :$arg"
 }
@@ -1010,7 +1010,7 @@ hook cmdMSG irken 50 {serverid arg} {
     regexp -- {^(\S+) (.*)$} $arg -> target text
     foreach line [split $text \n] {
         send $serverid "PRIVMSG $target :$text"
-        ensurechan $serverid $target {}
+        ensurechan [chanid $serverid $target] "" {}
         addchantext [chanid $serverid $target] "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self
     }
 }
@@ -1023,7 +1023,7 @@ hook cmdQUERY irken 50 {serverid arg} {
         addchantext $::active "Can't query a channel.\n" -tags system
         return -code break
     }
-    ensurechan $serverid $arg {}
+    ensurechan [chanid $serverid $arg] "" {}
 }
 hook cmdRELOAD irken 50 {serverid arg} {
     source $::argv0
@@ -1043,7 +1043,6 @@ proc docmd {serverid cmd arg} {
         hook call $hook $serverid $arg
     } else {
         send $serverid "$cmd $arg"
-        return
     }
 }
 
