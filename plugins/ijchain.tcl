@@ -21,6 +21,7 @@ hook handleJOIN ijchain 75 {serverid msg} {
         return
     }
     set ::expectingijchainnames 1
+    after 2000 {set ::expectingijchainnames 0}
     send $serverid "PRIVMSG $::botnick :names"
 }
 
@@ -64,7 +65,6 @@ hook handlePRIVMSG ijchain 15 {serverid msg} {
             hook call handleJOIN $serverid \
                 [dict create src [decoratenick $nick] args "#tcl"]
         }
-        set ::expectingijchainnames 0
         # Don't display this message
         return -code break
     }
