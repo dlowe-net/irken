@@ -875,8 +875,11 @@ hook handlePRIVMSG irken-privmsg 20 {serverid msg} {
         # direct message - so chan is source, not target
         dict set msg chan [dict get $msg src]
     }
+    if {[isself $serverid [dict get $msg src]]} {
+        dict set msg tag [concat [dict get? {} $msg tag] self]
+    }
     if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
-        dict set msg tag highlight
+        dict set msg tag [concat [dict get? {} $msg tag] highlight]
     }
     return -code continue [list $serverid $msg]
 }
