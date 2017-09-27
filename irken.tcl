@@ -139,7 +139,7 @@ proc initui {} {
         .t tag config bg_$tagcolor -background $color
     }
     .t tag config hlink -foreground blue -underline 1
-    .t tag bind hlink <Button-1> {hook call openhlink [.t get {*}[.t tag prevrange hlink @%x,%y]]}
+    .t tag bind hlink <ButtonRelease-1> {hook call openhlink [.t get {*}[.t tag prevrange hlink @%x,%y]]}
     .t tag bind hlink <Enter> {.t configure -cursor hand2}
     .t tag bind hlink <Leave> {.t configure -cursor xterm}
     ttk::frame .cmdline
