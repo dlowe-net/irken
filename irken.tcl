@@ -921,7 +921,7 @@ hook handleUnknown irken 50 {serverid msg} {
 }
 
 hook ctcpACTION irken 50 {serverid msg text} {
-    ensurechan $serverid [dict get $msg chan] {}
+    ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
     addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg src] $text\n" -time [dict get $msg time] -tags [dict get? {} $msg tag]
 }
 hook ctcpCLIENTINFO irken 50 {serverid msg text} {
