@@ -523,6 +523,7 @@ proc addchantext {chanid text args} {
         if {[lsearch -exact $args highlight] != -1} {
             .nav tag add highlight $chanid
         }
+        hook call textinserted $chanid $newtext
         return
     }
     set atbottom [expr {[lindex [.t yview] 1] == 1.0}]
@@ -532,6 +533,7 @@ proc addchantext {chanid text args} {
         .t yview end
     }
     .t configure -state disabled
+    hook call textinserted $chanid $newtext
 }
 
 proc selectchan {} {
@@ -564,6 +566,7 @@ proc selectchan {} {
     }
     wm title . "Irken - [serverpart $::active]/[.nav item $::active -text]"
     focus .cmd
+    hook call chanselected $chanid
 }
 
 # ensurechan creates the data structures and ui necessary to support a
