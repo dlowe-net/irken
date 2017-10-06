@@ -1059,14 +1059,16 @@ proc returnkey {} {
     }
     set text [.cmd get]
     dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
-    if {[regexp {^/(\S+)\s*(.*)} $text -> cmd text]} {
-        docmd [serverpart $::active] [string toupper $cmd] $text
-    } elseif {$text ne ""} {
-        if {[channelpart $::active] eq ""} {
-            addchantext $::active "This isn't a channel.\n" -tags system
-        } else {
-            hook call cmdMSG [serverpart $::active] "[channelpart $::active] $text"
-            .t yview end
+    foreach text [split $text "\n"] {
+        if {[regexp {^/(\S+)\s*(.*)} $text -> cmd text]} {
+            docmd [serverpart $::active] [string toupper $cmd] $text
+        } elseif {$text ne ""} {
+            if {[channelpart $::active] eq ""} {
+                addchantext $::active "This isn't a channel.\n" -tags system
+            } else {
+                hook call cmdMSG [serverpart $::active] "[channelpart $::active] $text"
+                .t yview end
+            }
         }
     }
     .cmd delete 0 end
