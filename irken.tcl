@@ -170,6 +170,7 @@ proc initui {} {
     bind . <Control-Prior> [list ttk::treeview::Keynav .nav up]
     bind . <Control-Next> [list ttk::treeview::Keynav .nav down]
     bind . <Control-space> {nexttaggedchannel}
+    bind . <Control-c> {if {[set r [.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.t get {*}$r]}}
     bind .topic <Return> setcurrenttopic
     bind .cmd <Return> returnkey
     bind .cmd <Up> [list history up]
@@ -381,9 +382,7 @@ proc nexttaggedchannel {} {
 }
 
 proc tagcolorchange {pos prefix defaultcol oldcol newcol} {
-    if {$newcol eq ""} {
-        set newcol $defaultcol
-    }
+    set newcol [expr {$newcol eq "" ? $defaultcol:$newcol}]
     if {$oldcol eq $newcol} {
         return [list {} $oldcol]
     }
@@ -480,10 +479,8 @@ proc combinestyles {text ranges} {
         set textstart $pos
         if {$op eq "push"} {
             lappend activetags $tag
-        } else {
-            if {[set pos [lsearch -exact $activetags $tag]] != -1} {
-                set activetags [lreplace $activetags $pos $pos]
-            }
+        } elseif {[set pos [lsearch -exact $activetags $tag]] != -1} {
+            set activetags [lreplace $activetags $pos $pos]
         }
     }
     return [concat $result [list [string range $text $textstart end] $activetags]]
@@ -581,7 +578,10 @@ proc ensurechan {chanid name tags} {
         }
         return
     }
-    set ::channeltext [dict merge [dict create $chanid {}] $::channeltext]
+    # When no elements are given, lappend has a useful property of
+    # leaving the value alone if the key exists, but creating a key
+    # with an empty string when it doesn't.
+    dict lappend ::channeltext $chanid
     dict set ::channelinfo $chanid [dict create cmdhistory {} historyidx {} topic {} users {}]
     if {[channelpart $chanid] eq ""} {
         .nav insert {} end -id $chanid -text $chanid -open True -tag [concat server $tags]
