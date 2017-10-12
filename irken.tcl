@@ -632,13 +632,14 @@ proc connect {serverid} {
 
     addchantext $serverid "Connecting to $serverid ($host:$port)...\n" -tags system
     set fd [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
+    fconfigure $fd -blocking 0
     fileevent $fd writable [list connected $fd]
     fileevent $fd readable [list recv $fd]
     dict set ::servers $fd $serverid
     dict set ::serverinfo $serverid [dict merge [dict create fd $fd nick [dict get $::config $serverid -nick]] $::ircdefaults]
 }
 
-proc send {serverid str} {set fd [dict get $::serverinfo $serverid fd]; puts $fd $str; flush $fd}
+proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str}
 
 proc connected {fd} {
     fileevent $fd writable {}
@@ -961,7 +962,7 @@ proc recv {fd} {
         disconnected $fd
         return
     }
-    gets $fd line
+    if {[gets $fd line] == 0} {return}
     set serverid [dict get $::servers $fd]
     set line [string trimright [encoding convertfrom utf-8 $line]]
     if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*([^:]+)?(?::(.*))?} $line -> tags src user host cmd args trailing]} {
