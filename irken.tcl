@@ -293,11 +293,11 @@ proc tabcomplete {} {
     return -code break
 }
 proc setchanusers {chanid users} {
-    set users [lsort -command "usercmp [serverpart $chanid]" $users]
     dict set ::channelinfo $chanid users $users
     if {$chanid ne $::active} {
         return
     }
+    set users [lsort -command "usercmp [serverpart $chanid]" $users]
     updatechaninfo $chanid
     set items [lmap x $users {lindex $x 0}]
     .users detach $items
@@ -551,12 +551,12 @@ proc selectchan {} {
     .topic insert 0 [dict get? "" $::channelinfo $chanid topic]
     .users delete [.users children {}]
     if {[ischannel $chanid]} {
-        foreach user [dict get? {} $::channelinfo $chanid users] {
+        foreach user [lsort -command "usercmp [serverpart $chanid]" [dict get? {} $::channelinfo $chanid users]] {
             .users insert {} end -id [lindex $user 0] -text [lindex $user 0] -tag [concat [lindex $user 1] "user"]
         }
     }
     updatechaninfo $chanid
-    if {[dict exists $::serverinfo [serverpart $chanid]]} {
+    if {[dict exists $::serverinfo [serverpart $chanid] nick]} {
         .nick configure -text [dict get $::serverinfo [serverpart $chanid] nick]
     } else {
         .nick configure -text [dict get $::config [serverpart $chanid] -nick]
