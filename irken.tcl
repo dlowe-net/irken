@@ -639,7 +639,7 @@ proc connect {serverid} {
     dict set ::serverinfo $serverid [dict merge [dict create fd $fd nick [dict get $::config $serverid -nick]] $::ircdefaults]
 }
 
-proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str}
+proc send {serverid str} {set fd [dict get $::serverinfo $serverid fd];puts $fd $str;flush $fd}
 
 proc connected {fd} {
     fileevent $fd writable {}
