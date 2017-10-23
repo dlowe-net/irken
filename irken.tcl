@@ -63,17 +63,12 @@ proc initvars {} {
     catch {font create Irken.Fixed {*}[font actual TkFixedFont] -size 10}
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
-    set ::config {}
     # ::servers is a dict keyed on fd containing the serverid
-    set ::servers {}
     # ::fds is a dict keyed on serverid containing the fd and current nick
-    set ::serverinfo {}
     # ::channeltext is a dict keyed on chanid containing channel text with tags
-    set ::channeltext {}
     # ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
-    set ::channelinfo {}
     # ::active is the chanid of the shown channel.
-    set ::active {}
+    lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active
 }
 
 proc server {serverid args} {dict set ::config $serverid $args}
@@ -179,6 +174,7 @@ proc initui {} {
 
     hook call setupui
     dict for {serverid serverconf} $::config {
+        dict set ::serverinfo $serverid $::ircdefaults
         ensurechan $serverid "" [list disabled]
     }
     .nav selection set [lindex $::config 0]
@@ -471,7 +467,7 @@ proc regexranges {text regex tag} {
 #   combinestyles "text" {0 push red} {2 pop red}
 proc combinestyles {text ranges} {
     lassign {{} {} 0} result activetags textstart
-    foreach {rangetag} [lsort -index 0 -integer $ranges] {
+    foreach rangetag [lsort -index 0 -integer $ranges] {
         lassign $rangetag pos op tag
         if {$textstart < $pos} {
             lappend result [string range $text $textstart $pos-1] $activetags
@@ -538,7 +534,7 @@ proc selectchan {} {
         return
     }
     .nav focus $chanid
-    foreach tag {unseen message highlight} {.nav tag remove $tag $chanid}
+    foreach tag [list unseen message highlight] {.nav tag remove $tag $chanid}
     set ::active $chanid
     .t configure -state normal
     .t delete 1.0 end
@@ -639,7 +635,7 @@ proc connect {serverid} {
     dict set ::serverinfo $serverid [dict merge [dict create fd $fd nick [dict get $::config $serverid -nick]] $::ircdefaults]
 }
 
-proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str}
+proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str;flush [dict get $::serverinfo $serverid fd]}
 
 proc connected {fd} {
     fileevent $fd writable {}
@@ -661,6 +657,7 @@ proc disconnected {fd} {
 
     .nav tag add disabled $serverid
     addchantext $serverid "Disconnected.\n" -tags system
+    hook call disconnection $serverid
 }
 
 hook handle001 irken 50 {serverid msg} {
@@ -957,19 +954,11 @@ hook ctcpVERSION irken 50 {serverid msg text} {
     }
 }
 
-proc recv {fd} {
-    if {[eof $fd]} {
-        disconnected $fd
-        return
+proc parseline {line} {
+    if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*((?:[^:]\S*(?:\s+|$))*)(?::(.*))?} $line -> tags src user host cmd args trailing]} {
+        return ""
     }
-    if {[gets $fd line] == 0} {return}
-    set serverid [dict get $::servers $fd]
-    set line [string trimright [encoding convertfrom utf-8 $line]]
-    if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*((?:[^:]\S* )*)(?::(.*)$)?} $line -> tags src user host cmd args trailing]} {
-        .t insert end PARSE_ERROR:$line\n warning
-        return
-    }
-    set args [split $args " "]
+    set args [split [string trimright $args] " "]
     if {$trailing ne ""} {lappend args $trailing}
     # Numeric responses specify a useless target afterwards
     if {[regexp {^\d+$} $cmd]} {set args [lrange $args 1 end]}
@@ -979,7 +968,18 @@ proc recv {fd} {
     } else {
         dict set msg time [clock seconds]
     }
-    hook call [expr {[hook exists handle$cmd] ? "handle$cmd":"handleUnknown"}] $serverid $msg
+    return $msg
+}
+
+proc recv {fd} {
+    if {[eof $fd]} {
+        disconnected $fd
+        return
+    }
+    if {[gets $fd line] == 0} {return}
+    if {[set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
+        hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $fd] $msg
+    }
 }
 
 hook cmdCLOSE irken 50 {serverid arg} {
@@ -1016,7 +1016,7 @@ hook cmdJOIN irken 50 {serverid arg} {
 }
 hook cmdMSG irken 50 {serverid arg} {
     regexp -- {^(\S+) (.*)$} $arg -> target text
-    foreach line [split $text \n] {
+    foreach line [split $text "\n"] {
         send $serverid "PRIVMSG $target :$text"
         ensurechan [chanid $serverid $target] "" {}
         addchantext [chanid $serverid $target] "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self

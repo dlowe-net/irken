@@ -67,8 +67,8 @@ proc irken_fixture {op} {
         fconfigure $fd -blocking 0
         vwait ::serverinfo
         ensurechan "TestServer" "" {}
-        ensurechan "TestServer" "#test" {}
-        ensurechan "TestServer" "target" {}
+        ensurechan "TestServer/#test" "#test" {}
+        ensurechan "TestServer/target" "target" {}
         set ::active {}
         .nav selection set [chanid "TestServer" "#test"]
         selectchan
@@ -146,6 +146,24 @@ test ischannel {} {
     assert {![ischannel [chanid "TestServer" "#foo"]]}
     dict set ::serverinfo "TestServer" chantypes #
     assert {![ischannel [chanid "TestServer" "&fo"]]}
+}
+
+test parseline {} {
+    set msg [parseline ":nick!nick@irc.example.com PART #foo :Out of here!"]
+    asserteq [dict get $msg cmd] "PART"
+    asserteq [dict get $msg args] [list "#foo" "Out of here!"]
+    set msg [parseline ":nick!nick@irc.example.com QUIT :Out of here!"]
+    asserteq [dict get $msg cmd] "QUIT"
+    asserteq [dict get $msg args] [list "Out of here!"]
+    set msg [parseline ":nick!nick@irc.example.com JOIN #foo"]
+    asserteq [dict get $msg cmd] "JOIN"
+    asserteq [dict get $msg args] [list "#foo"]
+    set msg [parseline ":irc.example.com 333 nick #foo nick!user@2600::ffff:dddd:eeee:4444 1505726688"]
+    asserteq [dict get $msg cmd] "333"
+    asserteq [dict get $msg args] [list "#foo" "nick!user@2600::ffff:dddd:eeee:4444" "1505726688"]
+    set msg [parseline ":irc.example.com 353 nick = #foo :one two three four"]
+    asserteq [dict get $msg cmd] "353"
+    asserteq [dict get $msg args] [list "=" "#foo" "one two three four"]
 }
 
 test addchantext {irken_fixture} {
