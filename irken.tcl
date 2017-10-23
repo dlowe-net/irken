@@ -713,8 +713,12 @@ hook handle332 irken 50 {serverid msg} {
 hook handle333 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set nick [lindex [dict get $msg args] 1]
-    set time [lindex [dict get $msg args] 2]
-    addchantext $chanid "Topic set by $nick at [clock format $time].\n" -tags system
+    if {[llength [dict get $msg args]] == 2} {
+        set time [lindex [dict get $msg args] 2]
+        addchantext $chanid "Topic set by $nick at [clock format $time].\n" -tags system
+    } else {
+        addchantext $chanid "Topic set by $nick.\n" -tags system
+    }
 }
 hook handle353 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
