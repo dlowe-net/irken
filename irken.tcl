@@ -753,9 +753,7 @@ hook handleKICK irken 50 {serverid msg} {
 }
 hook handleKICK irken-display 75 {serverid msg} {
     lassign [dict get $msg args] chan target note
-    if {$note ne {}} {
-        set note " ($note)"
-    }
+    set note [expr {$note ne "" ? " ($note)":""}]
     set chanid [chanid $serverid $chan]
     if {[isself $serverid $target]} {
         addchantext $chanid "[dict get $msg src] kicks you from $chan.$note\n" -tags system
@@ -858,9 +856,7 @@ hook handlePART irken 50 {serverid msg} {
 }
 hook handlePART irken-display 75 {serverid msg} {
     lassign [dict get $msg args] chan note
-    if {$note ne {}} {
-        set note " ($note)"
-    }
+    set note [expr {$note ne "" ? " ($note)":""}]
     set chanid [chanid $serverid $chan]
     if {[isself $serverid [dict get $msg src]]} {
         if {[dict exists $::channelinfo $chanid]} {
@@ -909,7 +905,7 @@ hook handleQUIT irken 50 {serverid msg} {
     return -code continue [list $serverid $msg]
 }
 hook handleQUIT irken-display 75 {serverid msg} {
-    set note [expr {[dict exists $msg trailing] ? " ([dict get $msg trailing])":""}]
+    set note [dict get? "" $msg trailing]
     foreach chanid [dict get $msg affectedchans] {
         addchantext $chanid "[dict get $msg src] has quit$note\n" -tags system
     }
@@ -965,10 +961,11 @@ proc recv {fd} {
     if {[gets $fd line] == 0} {return}
     set serverid [dict get $::servers $fd]
     set line [string trimright [encoding convertfrom utf-8 $line]]
-    if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*([^:]+)?(?::(.*))?} $line -> tags src user host cmd args trailing]} {
+    if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*((?:[^:]\S* )*)(?::(.*)$)?} $line -> tags src user host cmd args trailing]} {
         .t insert end PARSE_ERROR:$line\n warning
         return
     }
+    set args [split $args " "]
     if {$trailing ne ""} {lappend args $trailing}
     # Numeric responses specify a useless target afterwards
     if {[regexp {^\d+$} $cmd]} {set args [lrange $args 1 end]}
