@@ -906,7 +906,7 @@ hook handleQUIT irken 50 {serverid msg} {
     return -code continue [list $serverid $msg]
 }
 hook handleQUIT irken-display 75 {serverid msg} {
-    set note [dict get? "" $msg trailing]
+    set note [expr {[set note [dict get? "" $msg trailing]] eq "" ? "":" ($note)"}]
     foreach chanid [dict get $msg affectedchans] {
         addchantext $chanid "[dict get $msg src] has quit$note\n" -tags system
     }
