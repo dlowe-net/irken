@@ -159,7 +159,6 @@ proc initui {} {
     pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
     pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
     pack .root -fill both -expand 1
-    bind . <Escape> {exec wish $argv0 &; exit}
     bind . <Prior> [list .t yview scroll -1 page]
     bind . <Next> [list .t yview scroll 1 page]
     bind . <Control-Prior> [list ttk::treeview::Keynav .nav up]
@@ -233,8 +232,7 @@ proc stopimplicitentry {} {
 }
 
 proc history {op} {
-    set oldidx [dict get? {} $::channelinfo $::active historyidx]
-    set idx $oldidx
+    set idx [set oldidx [dict get? {} $::channelinfo $::active historyidx]]
     set cmdhistory [dict get $::channelinfo $::active cmdhistory]
     switch -- $op {
         "up" {set idx [expr {$idx eq "" ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]}
