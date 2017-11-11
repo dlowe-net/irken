@@ -37,7 +37,7 @@ proc hook {op name args} {
         }
         default {
             set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] $name]
-            dict set ::hooks $op [lsort -index 1 -integer [concat $hook [list [concat [list $name] $args]]]]
+            dict set ::hooks $op [lsort -index 1 -integer [linsert $hook end [concat [list $name] $args]]]
             return $op
         }
     }
@@ -122,7 +122,7 @@ proc initui {} {
                    [expr {26 * [font measure Irken.Fixed 0]}] left]
     .t tag config line -lmargin2 [expr {26 * [font measure Irken.Fixed 0]}]
     .t tag config nick -foreground steelblue
-    .t tag config self   -foreground gray30
+    .t tag config self -foreground gray30
     .t tag config highlight  -foreground green
     .t tag config system  -font Irken.FixedItalic
     .t tag config italic -font Irken.FixedItalic
@@ -146,7 +146,6 @@ proc initui {} {
     .users tag config o -foreground red -image [image create photo -format png -data $::opsicon]
     .users tag config h -foreground pink -image [image create photo -format png -data $::halfopsicon]
     .users tag config v -foreground blue -image [image create photo -format png -data $::voiceicon]
-    .users tag config user -foreground black -image [image create photo -format png -data $::blankicon]
     .users column "#0" -width 140
     bind .users <Double-Button-1> {userclick}
     ttk::label .chaninfo -relief groove -border 2 -justify center -padding 2 -anchor center
@@ -172,6 +171,10 @@ proc initui {} {
     bind .cmd <Tab> tabcomplete
 
     hook call setupui
+    # this is called after the setupui hook because earlier tags override
+    # later tags.
+    .users tag config user -foreground black -image [image create photo -format png -data $::blankicon]
+
     dict for {serverid serverconf} $::config {
         dict set ::serverinfo $serverid $::ircdefaults
         ensurechan $serverid "" [list disabled]
@@ -389,6 +392,7 @@ proc tagcolorchange {pos prefix defaultcol oldcol newcol} {
     }
     return [list $result $newcol]
 }
+
 proc colorcode {text} {
     lassign {0 "" "" 0 0 black white} pos bold italic underline reverse fg bg result tagranges
     set rest $text
@@ -507,12 +511,9 @@ proc addchantext {chanid text args} {
     lappend newtext "\[[clock format $timestamp -format %H:%M:%S]\]" {} "\t[dict get? * $args -nick]\t" "nick" {*}$textranges
     dict append ::channeltext $chanid " $newtext"
     if {$chanid ne $::active} {
-        .nav tag add unseen $chanid
-        if {[lsearch -exact $args system] == -1} {
-            .nav tag add message $chanid
-        }
-        if {[lsearch -exact $args highlight] != -1} {
-            .nav tag add highlight $chanid
+        # Add all the tags passed in as -tag to the nav entry, plus unseen tag.
+        foreach tag [concat "unseen" [dict get? {} $args -tags]] {
+            .nav tag add $tag $chanid
         }
         hook call textinserted $chanid $newtext
         return
@@ -531,9 +532,14 @@ proc selectchan {} {
     if {[set chanid [.nav selection]] eq $::active} {
         return
     }
-    .nav focus $chanid
-    foreach tag [list unseen message highlight] {.nav tag remove $tag $chanid}
     set ::active $chanid
+    .nav focus $chanid
+    foreach tag [.nav item $chanid -tags] {
+        # Remove all inessential tags
+        if {[lsearch -exact [list "server" "channel" "direct" "disabled"] $tag] == -1} {
+            .nav tag remove $tag $chanid
+        }
+    }
     .t configure -state normal
     .t delete 1.0 end
     if {[dict get $::channeltext $chanid] ne ""} {
@@ -698,6 +704,7 @@ hook handle331 irken 50 {serverid msg} {
 hook handle332 irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     set topic [dict get $msg trailing]
+    ensurechan $chanid [lindex [dict get $msg args] 0] {}
     setchantopic $chanid $topic
     if {$topic ne ""} {
         addchantext $chanid "Channel topic: $topic\n" -tags system
@@ -874,11 +881,12 @@ hook handlePRIVMSG irken-privmsg 20 {serverid msg} {
         # direct message - so chan is source, not target
         dict set msg chan [dict get $msg src]
     }
+    dict lappend msg tag "message"
     if {[isself $serverid [dict get $msg src]]} {
-        dict set msg tag [concat [dict get? {} $msg tag] self]
+        dict lappend msg tag "self"
     }
     if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
-        dict set msg tag [concat [dict get? {} $msg tag] highlight]
+        dict lappend msg tag "highlight"
     }
     return -code continue [list $serverid $msg]
 }
