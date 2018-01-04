@@ -180,11 +180,6 @@ hook handleQUIT friend 60 {serverid msg} {
         dict lappend msg tag friend
         dict set ::onlinefriends $serverid \
             [lsearch -exact -inline -not [dict get $::onlinefriends $serverid] [dict get $msg src]]
-        set chanid [chanid $serverid [dict get $msg src]]
-        if {[.nav item $chanid] ne ""} {
-            .nav tag add disabled $chanid
-            addchantext $chanid "$nick has logged out.\n"
-        }
         return -code continue [list $serverid $msg]
     }
 }

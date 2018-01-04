@@ -744,9 +744,8 @@ hook handleJOIN irken 50 {serverid msg} {
 }
 hook handleJOIN irken-display 75 {serverid msg} {
     set chan [lindex [dict get $msg args] 0]
-    set chanid [chanid $serverid $chan]
     if {![isself $serverid [dict get $msg src]]} {
-        addchantext $chanid "[dict get $msg src] has joined $chan\n" -tags system
+        addchantext [chanid $serverid $chan] "[dict get $msg src] has joined $chan\n" -tags system
     }
 }
 hook handleKICK irken 50 {serverid msg} {
@@ -899,16 +898,14 @@ hook handlePRIVMSG irken 50 {serverid msg} {
     addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]\n" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
 }
 hook handleQUIT irken 50 {serverid msg} {
-    set affectedchans {}
     foreach chanid [lsearch -all -exact -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
         if {[lsearch -exact -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
             remchanuser $chanid [dict get $msg src]
-            lappend affectedchans $chanid
+            dict lappend msg affectedchans $chanid
         }
     }
     # The user isn't going to be in the channels, so a message with
-    # annotation for the display hook.
-    dict set msg affectedchans $affectedchans
+    # annotation is passed for the display hook.
     return -code continue [list $serverid $msg]
 }
 hook handleQUIT irken-display 75 {serverid msg} {
@@ -916,6 +913,12 @@ hook handleQUIT irken-display 75 {serverid msg} {
     foreach chanid [dict get $msg affectedchans] {
         addchantext $chanid "[dict get $msg src] has quit$note\n" -tags system
     }
+    set chanid [chanid $serverid [dict get $msg src]]
+    if {[.nav exists $chanid] ne ""} {
+        .nav tag add disabled $chanid
+        addchantext $chanid "[dict get $msg src] has quit$note\n"
+    }
+
 }
 hook handleTOPIC irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
