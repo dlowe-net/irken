@@ -16,6 +16,9 @@ hook handlePRIVMSG filterjoins 70 {serverid msg} {
     dict set ::lastspoke $serverid [dict get $msg src] [clock seconds]
 }
 proc worthy {serverid nick} {
+    if {[isself $serverid $nick]} {
+        return 1
+    }
     if {![dict exists $::lastspoke $serverid $nick]} {
         return 0
     }
