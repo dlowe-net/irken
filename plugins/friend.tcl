@@ -50,7 +50,6 @@ hook setupui friend 50 {} {
     catch {source $::friendconfpath}
     .nav tag config friend -foreground blue
     .t tag config friend -foreground blue
-    # TODO: add star graphic for friend on user list
     .users tag config f -foreground blue -image [image create photo -format png -data $::friendicon]
 }
 
