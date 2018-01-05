@@ -7,7 +7,6 @@
 #   appear as if they are occurring in the IRC channel.
 
 set ::botnick ijchain
-set ::expectingijchainnames 0
 
 proc decoratenick {nick} {
     return [string cat $nick "@"]
@@ -20,8 +19,6 @@ hook handleJOIN ijchain 75 {serverid msg} {
     if {[lindex [dict get $msg args] 0] ne "#tcl"} {
         return
     }
-    set ::expectingijchainnames 1
-    after 2000 {set ::expectingijchainnames 0}
     send $serverid "PRIVMSG $::botnick :names"
 }
 
@@ -60,12 +57,14 @@ hook handlePRIVMSG ijchain 15 {serverid msg} {
         set nick [decoratenick $nick]
         return -code break [list $serverid [dict replace $msg src $nick args [list $nick $text] trailing $text]]
     }
-    if {$::expectingijchainnames} {
-        foreach nick [split [dict get $msg trailing] " "] {
-            hook call handleJOIN $serverid \
-                [dict create src [decoratenick $nick] args "#tcl"]
-        }
-        # Don't display this message
-        return -code break
+
+    # Must be the names of correspondents
+    foreach nick [split [dict get $msg trailing] " "] {
+        lappend names [decoratenick $nick]
     }
+    hook call handle353 $serverid \
+        [dict create args [list "*" "#tcl"] trailing $names]
+
+    # Don't display this message
+    return -code break
 }
