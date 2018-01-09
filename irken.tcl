@@ -854,7 +854,7 @@ hook handlePART irken 50 {serverid msg} {
     set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
     remchanuser $chanid [dict get $msg src]
     if {[isself $serverid [dict get $msg src]]} {
-        if {[dict exists $::channelinfo $chanid]} {
+        if {[.nav exists $chanid]} {
             .nav tag add disabled $chanid
         }
     }
