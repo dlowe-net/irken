@@ -914,7 +914,7 @@ hook handleQUIT irken-display 75 {serverid msg} {
         addchantext $chanid "[dict get $msg src] has quit$note\n" -tags system
     }
     set chanid [chanid $serverid [dict get $msg src]]
-    if {[.nav exists $chanid] ne ""} {
+    if {[.nav exists $chanid]} {
         .nav tag add disabled $chanid
         addchantext $chanid "[dict get $msg src] has quit$note\n"
     }
