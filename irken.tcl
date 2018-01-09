@@ -1036,7 +1036,7 @@ hook cmdQUERY irken 50 {serverid arg} {
         addchantext $::active "Query: missing nick.\n" -tags system
         return -code break
     }
-    if {[ischannel $arg]} {
+    if {[ischannel [chanid $serverid $arg]]} {
         addchantext $::active "Can't query a channel.\n" -tags system
         return -code break
     }
