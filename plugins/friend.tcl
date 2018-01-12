@@ -178,7 +178,7 @@ hook handleQUIT friend 60 {serverid msg} {
     if {[lsearch -exact [dict get? {} $::friends $serverid] [dict get $msg src]] != -1} {
         dict lappend msg tag friend
         dict set ::onlinefriends $serverid \
-            [lsearch -exact -inline -not [dict get $::onlinefriends $serverid] [dict get $msg src]]
+            [lsearch -exact -inline -not [dict get? {} $::onlinefriends $serverid] [dict get $msg src]]
         return -code continue [list $serverid $msg]
     }
 }
