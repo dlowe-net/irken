@@ -64,7 +64,7 @@ proc initvars {} {
 
     # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
     # ::servers is a dict keyed on fd containing the serverid
-    # ::fds is a dict keyed on serverid containing the fd and current nick
+    # ::serverinfo is a dict keyed on serverid containing the fd, current nick, and other server-specific info
     # ::channeltext is a dict keyed on chanid containing channel text with tags
     # ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
     # ::active is the chanid of the shown channel.
@@ -1002,7 +1002,7 @@ hook cmdCLOSE irken 50 {serverid arg} {
         return -code break
     }
     if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
-        send $serverid "PART [lindex $arg 0] :[lrange $arg 1 end]"
+        send $serverid "PART [channelpart $chanid] :[lrange $arg 1 end]"
     }
     removechan $chanid
 }
