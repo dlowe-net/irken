@@ -80,6 +80,48 @@ proc irken_fixture {op} {
     destroy {*}[lsearch -all -inline -not -exact [winfo children .] ".#BWidget"]
 }
 
+test hook {} {
+    hook testevent lowpriority 5 {a} {
+        set ::testval {}
+        lappend ::testval l-$a
+    }
+    hook testevent hook 10 {a} {
+        lappend ::testval h-$a
+    }
+    # basic hook call
+    hook call testevent "foo"
+    asserteq $::testval [list l-foo h-foo]
+
+    # redefinition of a hook
+    hook testevent hook 15 {a} {
+        lappend ::testval "r-$a"
+    }
+    hook call testevent "foo"
+    asserteq $::testval [list l-foo r-foo]
+
+    # overriding a previous hook
+    hook testevent override 20 {a} {
+        lappend ::testval "h-$a"
+    }
+    hook call testevent "foo"
+    asserteq $::testval [list l-foo r-foo h-foo]
+
+    # stopping a hook chain
+    hook testevent hook 10 {a} {
+        lappend ::testval "stopped"
+        return -code break
+    }
+    hook call testevent "foo"
+    asserteq $::testval [list l-foo stopped]
+
+    # changing argument for subsequent hooks
+    hook testevent hook 10 {a} {
+        return -code continue "bar"
+    }
+    hook call testevent "foo"
+    asserteq $::testval "l-foo h-bar"
+}
+
 test irctolower {} {
     asserteq [irctolower "ascii" "FOO"] "foo"
     asserteq [irctolower "rfc1459" "FOO"] "foo"

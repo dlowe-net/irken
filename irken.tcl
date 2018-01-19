@@ -15,9 +15,7 @@ namespace ensemble configure dict -map [dict merge [namespace ensemble configure
 #   return -code continue : replace hook parameter list with the return value
 #   return -code break : stop processing hook
 #   normal return : continue processing to next hook
-if {![info exists ::hooks]} {
-    set ::hooks [dict create]
-}
+if {![info exists ::hooks]} {set ::hooks [dict create]}
 proc hook {op name args} {
     switch -- $op {
         "exists" {return [expr {[dict get? "" $::hooks $name] ne ""}]}
@@ -28,7 +26,7 @@ proc hook {op name args} {
         "call" {
             foreach hookproc [dict get? {} $::hooks $name] {
                 try {
-                    apply [lrange $hookproc 2 3] {*}$args
+                    [lindex $hookproc 0] {*}$args
                 } on continue {val} {
                     set args $val
                 }
@@ -36,8 +34,10 @@ proc hook {op name args} {
             return $args
         }
         default {
-            set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] $name]
-            dict set ::hooks $op [lsort -index 1 -integer [linsert $hook end [concat [list $name] $args]]]
+            lassign $args priority params code
+            namespace eval hookprocs [list proc $op-$name $params $code]
+            set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] hookprocs::$op-$name]
+            dict set ::hooks $op [lsort -index 1 -integer [linsert $hook end [list hookprocs::$op-$name $priority]]]
             return $op
         }
     }
