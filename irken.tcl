@@ -297,7 +297,6 @@ proc setchanusers {chanid users} {
     set users [lsort -command "usercmp [serverpart $chanid]" $users]
     updatechaninfo $chanid
     set items [lmap x $users {lindex $x 0}]
-    .users detach $items
     set count [llength $items]
     for {set i 0} {$i < $count} {incr i} {
         .users move [lindex $items $i] {} $i
@@ -336,11 +335,9 @@ proc remchanuser {chanid user} {
         set prefixes [dict keys [dict get $::serverinfo [serverpart $chanid] prefix]]
         set nick [string trimleft $user $prefixes]
         set users [dict get $::channelinfo $chanid users]
-        if {[set idx [lsearch -exact -index 0 $users $nick]] != -1} {
-            dict set ::channelinfo $chanid users [lreplace $users $idx $idx]
-            if {$chanid eq $::active} {
-                .users delete $nick
-            }
+        dict set ::channelinfo $chanid users [lsearch -all -inline -exact -not -index 0 $users $nick]
+        if {$chanid eq $::active && [.users exists $nick]} {
+            .users delete $nick
         }
     }
 }
