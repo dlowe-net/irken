@@ -35,7 +35,7 @@ proc hook {op name args} {
         }
         default {
             lassign $args priority params code
-            namespace eval hookprocs [list proc $op-$name $params $code]
+            namespace eval ::hookprocs [list proc $op-$name $params $code]
             set hook [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $op] hookprocs::$op-$name]
             dict set ::hooks $op [lsort -index 1 -integer [linsert $hook end [list hookprocs::$op-$name $priority]]]
             return $op
@@ -1004,7 +1004,7 @@ hook cmdCLOSE irken 50 {serverid arg} {
     removechan $chanid
 }
 hook cmdEVAL irken 50 {serverid arg} {
-    addchantext $::active "$arg -> [eval $arg]\n" -tags system
+    addchantext $::active "$arg -> [namespace eval :: $arg]\n" -tags system
 }
 hook cmdME irken 50 {serverid arg} {
     if {[channelpart $::active] eq ""} {
@@ -1040,7 +1040,7 @@ hook cmdQUERY irken 50 {serverid arg} {
     ensurechan [chanid $serverid $arg] "" {}
 }
 hook cmdRELOAD irken 50 {serverid arg} {
-    source $::argv0
+    namespace eval :: {source $::argv0}
     addchantext $::active "Irken reloaded.\n" -tags system
 }
 hook cmdSERVER irken 50 {serverid arg} {
