@@ -261,7 +261,7 @@ namespace eval irken {
     }
     proc tabcomplete {} {
         if {![ischannel $::active]} {
-            return
+            return -code break
         }
         set user {}
         set userlist [dict get $::channelinfo $::active users]
