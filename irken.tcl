@@ -979,11 +979,11 @@ namespace eval irken {
     }
 
     proc recv {fd} {
-        if {[eof $fd]} {
+        if {[eof $fd] || [catch {gets $fd line} len]} {
             disconnected $fd
             return
         }
-        if {[gets $fd line] == 0} {return}
+        if {$len == 0} {return}
         if {[set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
             hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $fd] $msg
         }
