@@ -28,9 +28,9 @@ Running
 
 These instructions are for Linux.  Windows support is unlikely.
 
-1. Install `tcl`, `tcl-tls`, and `bwidget` - you need at least version
+1. Install `tcl`, `tcllib`, `tcl-tls`, and `bwidget` - you need at least version
    8.6 of TCL.  For systems based on Debian (like Ubuntu or Linux
-   Mint), you can run `sudo apt install tcl tcl-tls bwidget`.  Feel
+   Mint), you can run `sudo apt install tcl tcllib tcl-tls bwidget`.  Feel
    free to contribute instructions for other distributions.
 2. Copy or symlink any desired plugins into into `~/.config/irken/`  You may
    have to make the directory.
