@@ -491,7 +491,7 @@ namespace eval irken {
         return -code continue [list $text [concat $ranges $newranges]]
     }
     hook tagchantext irken-http 60 {text ranges} {
-        return -code continue [list $text [concat $ranges [regexranges $text {https?://[-a-zA-Z0-9@:%_/\+.~#?&=,:()]+} hlink]]]
+        return -code continue [list $text [concat $ranges [regexranges $text {https?://[-A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=]+} hlink]]]
     }
 
     # addchantext inserts text at the end of a channel's buffer, updating

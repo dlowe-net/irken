@@ -167,7 +167,8 @@ test colorcode {} {
 
 test regexranges {} {
     asserteq [irken::regexranges "testing text" te te] {{0 push te} {2 pop te} {8 push te} {10 pop te}}
-    asserteq [irken::regexranges "x https://example.com/ x" {https?://[-a-zA-Z0-9@:%_/\+.~#?&=]+} hlink] {{2 push hlink} {22 pop hlink}}
+    asserteq [irken::regexranges "x https://example.com/ x" {https?://[-A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=]+} hlink] {{2 push hlink} {22 pop hlink}}
+    asserteq [irken::regexranges "x https://example.com/#foo\[bar\] x" {https?://[-A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=]+} hlink] {{2 push hlink} {31 pop hlink}}
 }
 
 test combinestyles {} {
