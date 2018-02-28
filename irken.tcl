@@ -1113,4 +1113,4 @@ namespace eval irken {
 }
 
 # Start up irken when executed as file
-if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {irken::irken}
+if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]] && ![info exists ::active]} {irken::irken}
