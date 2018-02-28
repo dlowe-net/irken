@@ -209,8 +209,8 @@ namespace eval irken {
     }
 
     proc irctolower {casemapping str} {
-        lassign [list [dict get {ascii 90 rfc1459 94 strict-rfc1459 93} $casemapping]] upperbound
-        return [join [lmap c [split $str ""] {scan $c %c i; format %c [expr {$i >= 65 && $i <= 90 ? $i+32:$i}]}] ""]
+        set upper [dict get {ascii 90 rfc1459 94 strict-rfc1459 93} $casemapping]
+        return [join [lmap c [split $str ""] {scan $c %c i; format %c [expr {$i >= 65 && $i <= $upper ? $i+32:$i}]}] ""]
     }
     proc ircstrcmp {casemapping a b} {return [string compare [irctolower $casemapping $a] [irctolower $casemapping $b]]}
     proc irceq {casemapping a b} {return [expr {[ircstrcmp $casemapping $a $b] == 0}]}
