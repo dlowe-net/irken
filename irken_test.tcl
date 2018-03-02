@@ -165,10 +165,20 @@ test colorcode {} {
     asserteq [irken::colorcode "\x16rev\x034,5-ersed\x16 col\x03or"] [list "rev-ersed color" {{0 push fg_white} {0 push bg_black} {3 pop fg_white} {3 push fg_maroon} {3 pop bg_black} {3 push bg_red} {9 pop fg_maroon} {9 push fg_red} {9 pop bg_red} {9 push bg_maroon} {13 pop fg_red} {13 pop bg_maroon}}]
 }
 
+test httpregexp {} {
+    assert {[regexp $irken::httpregexp "testing text"] == 0}
+    assert {[regexp $irken::httpregexp "http://example.com/"] == 1}
+    assert {[regexp $irken::httpregexp "https://example.com/"] == 1}
+    regexp $irken::httpregexp "https://example.com/." match
+    asserteq $match "https://example.com/"
+    regexp $irken::httpregexp "https://example.com/, " match
+    asserteq $match "https://example.com/"
+    assert {[regexp $irken::httpregexp "https://example.com/#foo\[bar\]%20"] == 1}
+}
+
 test regexranges {} {
     asserteq [irken::regexranges "testing text" te te] {{0 push te} {2 pop te} {8 push te} {10 pop te}}
-    asserteq [irken::regexranges "x https://example.com/ x" {https?://[-A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=]+} hlink] {{2 push hlink} {22 pop hlink}}
-    asserteq [irken::regexranges "x https://example.com/#foo\[bar\] x" {https?://[-A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=]+} hlink] {{2 push hlink} {31 pop hlink}}
+    asserteq [irken::regexranges "x https://example.com/ x" $irken::httpregexp hlink] {{2 push hlink} {22 pop hlink}}
 }
 
 test combinestyles {} {
