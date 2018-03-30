@@ -276,7 +276,8 @@ namespace eval ::irken {
         }
         set str [expr {$tabstart == 0 ? "[lindex $user 0]: ":[lindex $user 0]}]
         .cmd configure -validate none
-        .cmd replace $tabstart $tabend $str
+        .cmd delete $tabstart $tabend
+        .cmd insert $tabstart $str
         .cmd configure -validate key
         dict set ::channelinfo $::active tab [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
         return -code break
@@ -837,9 +838,7 @@ namespace eval ::irken {
                 return
             }
             set user [lsearch -exact -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
-            if {$user eq ""} {
-                return
-            }
+            if {$user eq ""} {return}
             addchantext $chanid "$oldnick is now known as $newnick\n" -tags system
         }
         set newchanid [chanid $serverid $newnick]
