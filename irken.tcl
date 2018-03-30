@@ -25,11 +25,8 @@ proc hook {op name args} {
         }
         "call" {
             foreach hookproc [dict get? {} $::hooks $name] {
-                try {
-                    [lindex $hookproc 0] {*}$args
-                } on continue {val} {
-                    set args $val
-                }
+                try {[lindex $hookproc 0] {*}$args
+                } on continue {val} {set args $val}
             }
             return $args
         }
@@ -44,24 +41,20 @@ proc hook {op name args} {
     }
 }
 
-namespace eval irc {
+namespace eval ::irc {
     namespace export send
     proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str;flush [dict get $::serverinfo $serverid fd]}
 }
 
-namespace eval irken {
+namespace eval ::irken {
     namespace import ::irc::*
-    namespace export chanid addchantext ensurechan addchanuser isself ischannel
+    namespace export chanid addchantext ensurechan updateusermodes isself ischannel serverpart
 
     # A chanid is $serverid for the server channel, $serverid/$channel for channel display.
     proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return [string cat $serverid "/" [irctolower [dict get $::serverinfo $serverid casemapping] $chan]]} }
     proc serverpart {chanid} {lindex [split $chanid {/}] 0}
     proc channelpart {chanid} {lindex [split $chanid {/}] 1}
-    proc ischannel {chanid} {
-        dict with ::serverinfo [serverpart $chanid] {}
-        regexp -- "^\[$chantypes\]\[^ ,\\a\]\{0,$channellen\}\$" [channelpart $chanid]
-    }
-
+    proc ischannel {chanid} {regexp -- "^\[[dict get $::serverinfo [serverpart $chanid] chantypes]\]\[^ ,\\a\]\{0,[dict get $::serverinfo [serverpart $chanid] channellen]\}\$" [channelpart $chanid]}
     proc globescape {str} {return [regsub -all {[][\\*?\{\}]} $str {\\&}]}
 
     set ::codetagcolormap [dict create 0 white 1 black 2 navy 3 green 4 red 5 maroon 6 purple 7 olive 8 yellow 9 lgreen 10 teal 11 cyan 12 blue 13 magenta 14 gray 15 lgray {} {}]
@@ -78,14 +71,14 @@ namespace eval irken {
         # ::channeltext is a dict keyed on chanid containing channel text with tags
         # ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
         # ::active is the chanid of the shown channel.
-        lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active
+        # ::seennicks a list of chanid nicks that we have seen since the last presence check
+        lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active ::seennicks
     }
 
     proc server {serverid args} {dict set ::config $serverid $args}
 
     proc loadconfig {} {
-        set config {}
-        set configdir $::env(HOME)/.config/irken/
+        lassign "$::env(HOME)/.config/irken/" configdir config
         file mkdir $configdir
         if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
             if {[catch {open "$configdir/50irken.tcl" w} fp]} {
@@ -202,10 +195,9 @@ namespace eval irken {
         tls::init -tls1 true -ssl2 false -ssl3 false
 
         dict for {serverid serverconf} $::config {
-            if {[dict get? 0 $serverconf -autoconnect]} {
-                connect $serverid
-            }
+            if {[dict get? 0 $serverconf -autoconnect]} {connect $serverid}
         }
+        after 500 [namespace code "sendpendingison"]
     }
 
     proc irctolower {casemapping str} {
@@ -248,21 +240,15 @@ namespace eval irken {
             "up" {set idx [expr {$idx eq "" ? 0 : $idx == [llength $cmdhistory] - 1 ? $oldidx : $idx + 1}]}
             "down" {set idx [expr {$idx eq "" || $idx == 0 ? "" : $idx - 1}]}
         }
-        if {$idx eq $oldidx} {
-            return
-        }
+        if {$idx eq $oldidx} {return}
         dict set ::channelinfo $::active historyidx $idx
         .cmd configure -validate none
         .cmd delete 0 end
-        if {$idx ne {}} {
-            .cmd insert 0 [lindex $cmdhistory $idx]
-        }
+        if {$idx ne {}} {.cmd insert 0 [lindex $cmdhistory $idx]}
         .cmd configure -validate key
     }
     proc tabcomplete {} {
-        if {![ischannel $::active]} {
-            return -code break
-        }
+        if {![ischannel $::active]} {return -code break}
         set user {}
         set userlist [dict get $::channelinfo $::active users]
         if {[dict exists $::channelinfo $::active tab]} {
@@ -290,8 +276,7 @@ namespace eval irken {
         }
         set str [expr {$tabstart == 0 ? "[lindex $user 0]: ":[lindex $user 0]}]
         .cmd configure -validate none
-        .cmd delete $tabstart $tabend
-        .cmd insert $tabstart $str
+        .cmd replace $tabstart $tabend $str
         .cmd configure -validate key
         dict set ::channelinfo $::active tab [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
         return -code break
@@ -301,13 +286,25 @@ namespace eval irken {
         if {$chanid ne $::active} {
             return
         }
-        set users [lsort -command "usercmp [serverpart $chanid]" $users]
         updatechaninfo $chanid
-        set items [lmap x $users {lindex $x 0}]
+        set items [lmap x [lsort -command "usercmp [serverpart $chanid]" $users] {lindex $x 0}]
         set count [llength $items]
         for {set i 0} {$i < $count} {incr i} {
             .users move [lindex $items $i] {} $i
         }
+    }
+
+    proc updateusermodes {chanid user addmodes delmodes} {
+        set users [dict get $::channelinfo $chanid users]
+        if {[set pos [lsearch -exact -index 0 $users $user]] == -1} {return}
+        set modes [lindex [lindex $users $pos] 1]
+        foreach delmode $delmodes {set modes [lsearch -all -inline -not -exact $modes $delmode]}
+        set modes [concat $modes $addmodes]
+        if {$chanid eq $::active} {
+            foreach delmode $delmodes  {.users tag remove $delmode $user}
+            foreach addmode $addmodes {.users tag add $addmode $user}
+        }
+        setchanusers $chanid [lreplace $users $pos $pos [list $user $modes]]
     }
 
     # users should be {nick modes}
@@ -315,26 +312,14 @@ namespace eval irken {
         set prefixes [dict get $::serverinfo [serverpart $chanid] prefix]
         regexp -- "^(\[[join [dict keys $prefixes] ""]\]*)(.*)" $user -> userprefixes nick
         set usermodes [concat $modes [lmap uprefix [split $userprefixes ""] {dict get $prefixes $uprefix}]]
-        set userentry [list $nick $usermodes]
         set users [dict get $::channelinfo $chanid users]
-        if {[set pos [lsearch -exact -index 0 $users $nick]] != -1} {
-            if {$userentry eq [lindex $users $pos]} {
-                # exact match - same prefix with user
-                return
-            }
-            # update user prefix
-            if {$chanid eq $::active} {
-                foreach oldmode [lindex [lindex $users $pos] 1] {.users tag remove $oldmode $nick}
-                foreach newmode $usermodes {.users tag add $newmode $nick}
-            }
-            setchanusers $chanid [lreplace $users $pos $pos $userentry]
-        } else {
-            # entirely new user
-            if {$chanid eq $::active} {
-                .users insert {} end -id $nick -text $nick -tag [concat $modes [list "user"]]
-            }
-            setchanusers $chanid [concat $users [list $userentry]]
+        if {[lsearch -exact -index 0 $users $nick] != -1} {
+            updateusermodes $chanid $nick $usermodes {}
+            return
         }
+        # new user to channel
+        if {$chanid eq $::active} {.users insert {} end -id $nick -text $nick -tag [concat $usermodes [list "user"]]}
+        setchanusers $chanid [concat $users [list [list $nick $usermodes]]]
     }
 
     proc remchanuser {chanid user} {
@@ -342,10 +327,8 @@ namespace eval irken {
             set prefixes [dict keys [dict get $::serverinfo [serverpart $chanid] prefix]]
             set nick [string trimleft $user $prefixes]
             set users [dict get $::channelinfo $chanid users]
-            dict set ::channelinfo $chanid users [lsearch -all -inline -exact -not -index 0 $users $nick]
-            if {$chanid eq $::active && [.users exists $nick]} {
-                .users delete $nick
-            }
+            dict set ::channelinfo $chanid users [lsearch -all -inline -not -exact -index 0 $users $nick]
+            if {$chanid eq $::active && [.users exists $nick]} {.users delete $nick}
         }
     }
 
@@ -370,28 +353,18 @@ namespace eval irken {
         set curchan [.nav selection]
         set chan [loopedtreenext .nav $curchan]
         while {$chan ne $curchan} {
-            if {[.nav tag has message $chan]} {
-                break
-            }
+            if {[.nav tag has message $chan]} {break}
             set chan [loopedtreenext .nav $chan]
         }
-        if {$chan ne $curchan} {
-            .nav selection set $chan
-        }
+        if {$chan ne $curchan} {.nav selection set $chan}
     }
 
     proc tagcolorchange {pos prefix defaultcol oldcol newcol} {
         set newcol [expr {$newcol eq "" ? $defaultcol:$newcol}]
-        if {$oldcol eq $newcol} {
-            return [list {} $oldcol]
-        }
+        if {$oldcol eq $newcol} {return [list {} $oldcol]}
         set result {}
-        if {$oldcol ne $defaultcol} {
-            lappend result [list $pos pop [string cat $prefix _ $oldcol]]
-        }
-        if {$newcol ne $defaultcol} {
-            lappend result [list $pos push [string cat $prefix _ $newcol]]
-        }
+        if {$oldcol ne $defaultcol} {lappend result [list $pos pop [string cat $prefix _ $oldcol]]}
+        if {$newcol ne $defaultcol} {lappend result [list $pos push [string cat $prefix _ $newcol]]}
         return [list $result $newcol]
     }
 
@@ -575,10 +548,9 @@ namespace eval irken {
     # name is specified.  The name should only be specified in response to
     # server messages, so that it gets the correct capitalization.
     proc ensurechan {chanid name tags} {
+        lappend ::seennicks $chanid
         if {[.nav exists $chanid]} {
-            if {$name ne ""} {
-                .nav item $chanid -text $name
-            }
+            if {$name ne ""} {.nav item $chanid -text $name}
             return
         }
         # When no elements are given, lappend has a useful property of
@@ -595,7 +567,6 @@ namespace eval irken {
         .nav insert [serverpart $chanid] end -id $chanid -text [expr {$name eq "" ? [channelpart $chanid]:$name}] -tag [concat $tag $tags]
 
         set items [lsort [.nav children [serverpart $chanid]]]
-        .nav detach $items
         for {set i 0} {$i < [llength $items]} {incr i} {
             .nav move [lindex $items $i] [serverpart $chanid] $i
         }
@@ -613,6 +584,30 @@ namespace eval irken {
             }
         }
         .nav delete $chanid
+    }
+
+    proc sendpendingison {} {
+        set servernicks [dict create]
+        foreach chanid [dict keys $::channelinfo] {
+            if {[channelpart $chanid] ne "" && ![ischannel $chanid]} {
+                dict lappend servernicks [serverpart $chanid] [channelpart $chanid]
+            }
+        }
+        dict for {serverid nicks} $servernicks {
+            foreach line [regexp -all -inline {\S(?:\S{0,200}|.{0,200}(?=\s+|$))} [join $nicks " "]] {send $serverid "ISON $line"}
+        }
+        after 500 [namespace code "updatepresence"]
+    }
+
+    proc updatepresence {} {
+        foreach chanid [dict keys $::channelinfo] {
+            if {[channelpart $chanid] ne "" && ![ischannel $chanid] && ![.nav tag has disabled $chanid] && [lsearch $::seennicks $chanid] == -1} {
+                .nav tag add disabled $chanid
+                addchantext $chanid "[channelpart $chanid] has logged out.\n" -tags system
+            }
+        }
+        set ::seennicks {}
+        after 60000 [namespace code "sendpendingison"]
     }
 
     set ::ircdefaults [dict create casemapping "rfc1459" chantypes "#&" channellen "200" prefix [dict create @ o + v]]
@@ -654,11 +649,11 @@ namespace eval irken {
     }
 
     proc disconnected {fd} {
-        set serverid [dict get $::servers $fd]
         fileevent $fd writable {}
         fileevent $fd readable {}
 
-        .nav tag add disabled $serverid
+        set serverid [dict get $::servers $fd]
+        .nav tag add disabled [concat [list $serverid] [.nav children $serverid]]
         addchantext $serverid "Disconnected.\n" -tags system
         hook call disconnection $serverid
     }
@@ -688,6 +683,16 @@ namespace eval irken {
     hook handle301 irken 50 {serverid msg} {
         lassign [dict get $msg args] nick awaymsg
         addchantext [chanid $serverid $nick] "$nick is away: $awaymsg\n" -tags system
+    }
+    hook handle303 irken 50 {serverid msg} {
+        foreach nick [split [lindex [dict get $msg args] 0] " "] {
+            set chanid [chanid $serverid $nick]
+            ensurechan $chanid $nick {}
+            if {[.nav tag has disabled $chanid]} {
+                .nav tag remove disabled $chanid
+                addchantext $chanid "[channelpart $chanid] has logged in.\n" -tags system
+            }
+        }
     }
     hook handle305 irken 50 {serverid msg} {
         addchantext $::active "You are no longer marked as being away.\n" -tags system
@@ -774,7 +779,6 @@ namespace eval irken {
         } else {
             addchantext $msgdest "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" -tags system
         }
-        set modes [dict values [dict get $::serverinfo $serverid prefix]]
         if {[ischannel $chanid]} {
             lassign {} changes params
             foreach arg $args {
@@ -784,18 +788,15 @@ namespace eval irken {
                     lappend params $arg
                 }
             }
+            set modes [dict values [dict get $::serverinfo $serverid prefix]]
             foreach change $changes {
-                if {[lsearch $modes [lindex $change 1]] != -1}  {
+                if {[lindex $change 1] in $modes}  {
                     set params [lassign $params param]
-                    set usermodes [lindex [lsearch -inline -index 0 -exact [dict get $::channelinfo $chanid users] $param] 1]
                     if {[lindex $change 0] eq "+"} {
-                        if {[lsearch $usermodes [lindex $change 1]] == -1} {
-                            lappend usermodes [lindex $change 1]
-                        }
+                        updateusermodes $chanid $param [lindex $change 1] {}
                     } else {
-                        set usermodes [lsearch -all -inline -not -exact $usermodes [lindex $change 1]]
+                        updateusermodes $chanid $param {} [lindex $change 1]
                     }
-                    addchanuser $chanid $param $usermodes
                 }
             }
         }
@@ -805,11 +806,11 @@ namespace eval irken {
         set newnick [dict get $msg trailing]
         foreach chanid [dict keys $::channelinfo] {
             if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
-                return
+                continue
             }
             set user [lsearch -exact -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
             if {$user eq ""} {
-                return
+                continue
             }
             remchanuser $chanid $oldnick
             addchanuser $chanid $newnick [lindex $user 1]
@@ -897,7 +898,7 @@ namespace eval irken {
         addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]\n" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
     }
     hook handleQUIT irken 50 {serverid msg} {
-        foreach chanid [lsearch -all -exact -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
+        foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
             if {[lsearch -exact -index 0 [dict get $::channelinfo $chanid users] [dict get $msg src]] != -1} {
                 remchanuser $chanid [dict get $msg src]
                 dict lappend msg affectedchans $chanid

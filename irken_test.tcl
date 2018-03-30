@@ -224,6 +224,14 @@ test addchantext {irken_fixture} {
     asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\ttester\t" "nick" "This is a test." {self line}]
 }
 
+test updateusermodes {irken_fixture} {
+    irken::addchanuser "TestServer/#test" "test\[user\]" {o}
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "test\[user\]" {o}]]
+    assert {[.users exists "test\[user\]"]}
+    irken::updateusermodes "TestServer/#test" "test\[user\]" {v} {o}
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "test\[user\]" {v}]]
+}
+
 test addchanuser {irken_fixture} {
     irken::addchanuser "TestServer/#test" "test\[user\]" {}
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "test\[user\]" {}]]

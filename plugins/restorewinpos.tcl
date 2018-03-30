@@ -17,7 +17,7 @@ namespace eval restorewinpos {
             puts $fp "restorewindows \"[wm geometry .]\""
             close $fp
         } else {
-            addchantext $::active "Warning: unable to write to $::restorewinposconfpath\n" -tags {fg_red italic}
+            addchantext $::active "Warning: unable to write to $confpath\n" -tags {fg_red italic}
         }
     }
 
