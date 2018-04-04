@@ -305,6 +305,33 @@ test handleMODE {irken_fixture} {
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o v}]]
 }
 
+test handleNICK {irken_fixture} {
+    irken::addchanuser [irken::chanid "TestServer" "#test"] "target" {o}
+    irken::ensurechan [irken::chanid "TestServer" "target"] "target" {}
+    irken::addchantext "TestServer/target" "This is a test."
+    set oldtext [dict get $::channeltext "TestServer/target"]
+    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    assert {[.users exists "other"]}
+    assert {![.users exists "target"]}
+    asserteq $oldtext [dict get $::channeltext "TestServer/other"]
+    asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "other" {o}]]
+    assert {[dict exists $::channelinfo "TestServer/other"]}
+    assert {[.nav exists "TestServer/other"]}
+    assert {![.nav exists "TestServer/target"]}
+}
+
+test handleNICKuserselected {irken_fixture} {
+    irken::ensurechan [irken::chanid "TestServer" "target"] "target" {}
+    .nav selection set [irken::chanid "TestServer" "target"]
+    irken::selectchan
+    asserteq $::active "TestServer/target"
+    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    irken::selectchan
+    asserteq $::active "TestServer/other"
+    assert {[.nav exists "TestServer/other"]}
+    assert {![.nav exists "TestServer/target"]}
+}
+
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
     runtests
 }
