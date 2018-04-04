@@ -95,7 +95,7 @@ namespace eval ::friend {
         dict lappend msg tag friend
         set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
         if {[lsearch -exact [dict get? {} $friends $serverid] [dict get $msg src]] != -1} {
-            updateusermodes $chanid $user f {}
+            updateusermodes $chanid [dict get $msg src] f {}
         }
     }
     hook handlePRIVMSG friend 35 {serverid msg} {
