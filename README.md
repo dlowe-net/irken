@@ -18,6 +18,7 @@ Features
 - topic editing
 - event hooks for easy customization
 - nick tab completion
+- presence notification
 - command history
 - color and formatting
 
