@@ -980,7 +980,7 @@ namespace eval ::irken {
     }
 
     proc recv {fd} {
-        if {[eof $fd] || [catch {gets $fd line} len]} {
+        if {[catch {gets $fd line} len] || [eof $fd]} {
             disconnected $fd
             return
         }
