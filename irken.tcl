@@ -701,15 +701,19 @@ namespace eval ::irken {
     hook handle306 irken 50 {serverid msg} {
         addchantext $::active "You have been marked as being away.\n" -tags system
     }
+    hook handle328 irken 50 {serverid msg} {
+        lassign [dict get $msg args] chan url
+        addchantext [chanid $serverid $chan] "Channel URL is $url.\n" -tags system
+    }
     hook handle331 irken 50 {serverid msg} {
         set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
         setchantopic $chanid ""
         addchantext $chanid "No channel topic set.\n" -tags system
     }
     hook handle332 irken 50 {serverid msg} {
-        set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-        set topic [dict get $msg trailing]
-        ensurechan $chanid [lindex [dict get $msg args] 0] {}
+        lassign [dict get $msg args] chan topic
+        set chanid [chanid $serverid $chan]
+        ensurechan $chanid $chan {}
         setchantopic $chanid $topic
         if {$topic ne ""} {
             addchantext $chanid "Channel topic: $topic\n" -tags system
@@ -764,12 +768,7 @@ namespace eval ::irken {
     hook handleKICK irken-display 75 {serverid msg} {
         lassign [dict get $msg args] chan target note
         set note [expr {$note ne "" ? " ($note)":""}]
-        set chanid [chanid $serverid $chan]
-        if {[isself $serverid $target]} {
-            addchantext $chanid "[dict get $msg src] kicks you from $chan.$note\n" -tags system
-        } else {
-            addchantext $chanid "[dict get $msg src] kicks $target from $chan.$note\n" -tags system
-        }
+        addchantext [chanid $serverid $chan] "[dict get $msg src] kicks [expr {[isself $serverid $target] ? "you":$target}] from $chan.$note\n" -tags system
     }
     hook handleMODE irken 50 {serverid msg} {
         set args [lassign [dict get $msg args] target]
