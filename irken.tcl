@@ -329,7 +329,9 @@ namespace eval ::irken {
             set nick [string trimleft $user $prefixes]
             set users [dict get $::channelinfo $chanid users]
             dict set ::channelinfo $chanid users [lsearch -all -inline -not -exact -index 0 $users $nick]
-            if {$chanid eq $::active && [.users exists $nick]} {.users delete $nick}
+            if {$chanid eq $::active && [.users exists $nick]} {
+                .users delete [list $nick]
+            }
         }
     }
 
@@ -584,7 +586,7 @@ namespace eval ::irken {
                 selectchan
             }
         }
-        .nav delete $chanid
+        .nav delete [list $chanid]
     }
 
     proc sendpendingison {} {
@@ -823,7 +825,7 @@ namespace eval ::irken {
             dict unset ::channeltext $oldchanid
             dict unset ::channelinfo $oldchanid
             .nav insert $serverid [.nav index $oldchanid] -id $newchanid {*}[.nav item $oldchanid] -text $newnick
-            .nav delete $oldchanid
+            .nav delete [list $oldchanid]
             if {$::active eq $oldchanid} {
                 .nav selection set $newchanid
             }

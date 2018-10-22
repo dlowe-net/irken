@@ -244,10 +244,15 @@ test addchanuser {irken_fixture} {
 }
 
 test remchanuser {irken_fixture} {
-    irken::addchanuser "TestServer/#test" "testuser" {}
+    set chanid [irken::chanid "TestServer" "#test"]
+    irken::addchanuser $chanid "testuser" {}
     assert {[.users exists "testuser"]}
-    irken::remchanuser "TestServer/#test" "testuser"
+    irken::remchanuser $chanid "testuser"
     assert {![.users exists "testuser"]}
+    irken::addchanuser $chanid "\\\\\\\\\\\\\\\\\\\\\\" {}
+    irken::remchanuser $chanid "\\\\\\\\\\\\\\\\\\\\\\"
+    assert {![.users exists "\\\\\\\\\\\\\\\\\\\\\\"]}
+
 }
 
 test removechan {irken_fixture} {
