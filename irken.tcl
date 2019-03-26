@@ -949,7 +949,7 @@ namespace eval ::irken {
     hook ctcpTIME irken 50 {serverid msg text} {
         if {$text eq ""} {
             addchantext $serverid "CTCP TIME request from [dict get $msg src]\n" -tags system
-            send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format -gmt 1 [clock seconds]]\001"
+            send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
         } else {
             addchantext $serverid "CTCP TIME reply from [dict get $msg src]: $text\n" -tags system
         }
