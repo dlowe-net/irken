@@ -15,7 +15,7 @@ namespace eval daybreak {
     }
 
     proc outputbreak {} {
-        set breaktext "- [clock format [clock seconds] -format {%Y-%m-%d}] -\n"
+        set breaktext "- [clock format [clock seconds] -format {%Y-%m-%d}] -"
         foreach chanid [dict keys $::channelinfo] {
             irken::addchantext $chanid $breaktext -tags system
         }

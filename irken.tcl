@@ -137,9 +137,9 @@ namespace eval ::irken {
             .t tag config bg_$tagcolor -background $color
         }
         .t tag config hlink -foreground blue -underline 1
-        .t tag bind hlink <ButtonRelease-1> [namespace code {hook call openhlink [.t get {*}[.t tag prevrange hlink @%x,%y]]}]
-        .t tag bind hlink <Enter> {.t configure -cursor hand2}
-        .t tag bind hlink <Leave> {.t configure -cursor xterm}
+        .t tag bind hlink <ButtonRelease-1> [namespace code {hook call openhlink [%W get {*}[%W tag prevrange hlink @%x,%y]]}]
+        .t tag bind hlink <Enter> {%W configure -cursor hand2}
+        .t tag bind hlink <Leave> {%W configure -cursor xterm}
         ttk::frame .cmdline
         ttk::label .nick -padding 3
         ttk::entry .cmd -validate key -validatecommand [namespace code {stopimplicitentry}] -font Irken.Fixed
@@ -161,12 +161,12 @@ namespace eval ::irken {
         pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
         pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
         pack .root -fill both -expand 1
-        bind . <Prior> [list .t yview scroll -1 page]
-        bind . <Next> [list .t yview scroll 1 page]
+        bind . <Prior> [list %W yview scroll -1 page]
+        bind . <Next> [list %W yview scroll 1 page]
         bind . <Control-Prior> [list ttk::treeview::Keynav .nav up]
         bind . <Control-Next> [list ttk::treeview::Keynav .nav down]
         bind . <Control-space> [namespace code {nexttaggedchannel}]
-        bind . <Control-c> {if {[set r [.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.t get {*}$r]}}
+        bind . <Control-c> {if {[set r [%W tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [%W get {*}$r]}}
         bind .topic <Return> [namespace code setcurrenttopic]
         bind .cmd <Return> [namespace code returnkey]
         bind .cmd <Up> [namespace code [list history up]]
@@ -471,11 +471,12 @@ namespace eval ::irken {
         return -code continue [list $text [concat $ranges [regexranges $text $irken::httpregexp hlink]]]
     }
 
-    # addchantext inserts text at the end of a channel's buffer, updating
-    # the UI as necessary.  If adding text to the active channel, it
-    # inserts the text at the end of the widget.  Otherwise, it sets the
-    # highlighting for the channel in the nav widget.  It calls the
-    # tagchantext hook to split the text into {text taglist} chunks.
+    # addchantext inserts a line of text at the end of a channel's
+    # buffer, updating the UI as necessary.  If adding text to the
+    # active channel, it inserts the text at the end of the widget.
+    # Otherwise, it sets the highlighting for the channel in the nav
+    # widget.  It calls the tagchantext hook to split the text into
+    # {text taglist} chunks.
     #
     # Usage:
     #   addchantext <chanid> <nick> <text> [<options>]
@@ -487,7 +488,7 @@ namespace eval ::irken {
         set textranges [combinestyles {*}[hook call tagchantext $text [lmap linetag "[dict get? {} $args -tags] line" {list 0 push $linetag}]]]
         # Using conditional expr instead of dict get? to avoid getting clock multiple times per message.
         set timestamp [expr {[dict exists $args -time] ? [dict get $args -time]:[clock seconds]}]
-        lappend newtext "\[[clock format $timestamp -format %H:%M:%S]\]" {} "\t[dict get? * $args -nick]\t" "nick" {*}$textranges
+        lappend newtext "\[[clock format $timestamp -format %H:%M:%S]\]" {} "\t[dict get? * $args -nick]\t" "nick" {*}$textranges "\n" {}
         dict append ::channeltext $chanid " $newtext"
         if {$chanid ne $::active} {
             # Add all the tags passed in as -tag to the nav entry, plus unseen tag.
@@ -606,7 +607,7 @@ namespace eval ::irken {
         foreach chanid [dict keys $::channelinfo] {
             if {[channelpart $chanid] ne "" && ![ischannel $chanid] && ![.nav tag has disabled $chanid] && [lsearch $::seennicks $chanid] == -1} {
                 .nav tag add disabled $chanid
-                addchantext $chanid "[channelpart $chanid] has logged out.\n" -tags system
+                addchantext $chanid "[channelpart $chanid] has logged out." -tags system
             }
         }
         set ::seennicks {}
@@ -617,19 +618,19 @@ namespace eval ::irken {
 
     proc connect {serverid} {
         if {[catch {dict get $::config $serverid -host} host]} {
-            addchantext $serverid "Fatal error: $serverid has no -host option $host.\n" -tags system
+            addchantext $serverid "Fatal error: $serverid has no -host option $host." -tags system
             return
         } elseif {![dict exists $::config $serverid -nick]} {
-            addchantext $serverid "Fatal error: $serverid has no -nick option.\n" -tags system
+            addchantext $serverid "Fatal error: $serverid has no -nick option." -tags system
             return
         } elseif {![dict exists $::config $serverid -user]} {
-            addchantext $serverid "Fatal error: $serverid has no -user option.\n" -tags system
+            addchantext $serverid "Fatal error: $serverid has no -user option." -tags system
             return
         }
         set insecure [dict get? 0 $::config $serverid -insecure]
         set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
-        addchantext $serverid "Connecting to $serverid ($host:$port)...\n" -tags system
+        addchantext $serverid "Connecting to $serverid ($host:$port)..." -tags system
         set fd [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
         fconfigure $fd -blocking 0 -buffering line
         fileevent $fd writable [namespace code [list connected $fd]]
@@ -642,7 +643,7 @@ namespace eval ::irken {
         fileevent $fd writable {}
         set serverid [dict get $::servers $fd]
         .nav tag remove disabled $serverid
-        addchantext $serverid "Connected.\n" -tags system
+        addchantext $serverid "Connected." -tags system
         send $serverid "CAP REQ :multi-prefix\nCAP REQ :znc.in/server-time-iso\nCAP REQ :server-time\nCAP END"
         if {[dict exists $::config $serverid -pass]} {
             send $serverid "PASS [dict get $::config $serverid -pass]"
@@ -657,7 +658,7 @@ namespace eval ::irken {
 
         set serverid [dict get $::servers $fd]
         .nav tag add disabled [concat [list $serverid] [.nav children $serverid]]
-        addchantext $serverid "Disconnected.\n" -tags system
+        addchantext $serverid "Disconnected." -tags system
         hook call disconnection $serverid
     }
 
@@ -685,7 +686,7 @@ namespace eval ::irken {
     }
     hook handle301 irken 50 {serverid msg} {
         lassign [dict get $msg args] nick awaymsg
-        addchantext [chanid $serverid $nick] "$nick is away: $awaymsg\n" -tags system
+        addchantext [chanid $serverid $nick] "$nick is away: $awaymsg" -tags system
     }
     hook handle303 irken 50 {serverid msg} {
         foreach nick [split [lindex [dict get $msg args] 0] " "] {
@@ -693,24 +694,24 @@ namespace eval ::irken {
             ensurechan $chanid $nick {}
             if {[.nav tag has disabled $chanid]} {
                 .nav tag remove disabled $chanid
-                addchantext $chanid "[channelpart $chanid] has logged in.\n" -tags system
+                addchantext $chanid "[channelpart $chanid] has logged in." -tags system
             }
         }
     }
     hook handle305 irken 50 {serverid msg} {
-        addchantext $::active "You are no longer marked as being away.\n" -tags system
+        addchantext $::active "You are no longer marked as being away." -tags system
     }
     hook handle306 irken 50 {serverid msg} {
-        addchantext $::active "You have been marked as being away.\n" -tags system
+        addchantext $::active "You have been marked as being away." -tags system
     }
     hook handle328 irken 50 {serverid msg} {
         lassign [dict get $msg args] chan url
-        addchantext [chanid $serverid $chan] "Channel URL is $url.\n" -tags system
+        addchantext [chanid $serverid $chan] "Channel URL is $url." -tags system
     }
     hook handle331 irken 50 {serverid msg} {
         set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
         setchantopic $chanid ""
-        addchantext $chanid "No channel topic set.\n" -tags system
+        addchantext $chanid "No channel topic set." -tags system
     }
     hook handle332 irken 50 {serverid msg} {
         lassign [dict get $msg args] chan topic
@@ -718,9 +719,9 @@ namespace eval ::irken {
         ensurechan $chanid $chan {}
         setchantopic $chanid $topic
         if {$topic ne ""} {
-            addchantext $chanid "Channel topic: $topic\n" -tags system
+            addchantext $chanid "Channel topic: $topic" -tags system
         } else {
-            addchantext $chanid "No channel topic set.\n" -tags system
+            addchantext $chanid "No channel topic set." -tags system
         }
     }
     hook handle333 irken 50 {serverid msg} {
@@ -728,9 +729,9 @@ namespace eval ::irken {
         set nick [lindex [dict get $msg args] 1]
         if {[llength [dict get $msg args]] == 2} {
             set time [lindex [dict get $msg args] 2]
-            addchantext $chanid "Topic set by $nick at [clock format $time].\n" -tags system
+            addchantext $chanid "Topic set by $nick at [clock format $time]." -tags system
         } else {
-            addchantext $chanid "Topic set by $nick.\n" -tags system
+            addchantext $chanid "Topic set by $nick." -tags system
         }
     }
     hook handle353 irken 50 {serverid msg} {
@@ -741,7 +742,7 @@ namespace eval ::irken {
     }
     hook handle366 irken 50 {serverid msg} {return}
     hook handle372 irken 50 {serverid msg} {
-        addchantext $serverid "[dict get $msg trailing]\n" -tags system
+        addchantext $serverid "[dict get $msg trailing]" -tags system
     }
     hook handle376 irken 50 {serverid msg} {return}
     hook handleJOIN irken 50 {serverid msg} {
@@ -756,7 +757,7 @@ namespace eval ::irken {
     hook handleJOIN irken-display 75 {serverid msg} {
         set chan [lindex [dict get $msg args] 0]
         if {![isself $serverid [dict get $msg src]]} {
-            addchantext [chanid $serverid $chan] "[dict get $msg src] has joined $chan\n" -tags system
+            addchantext [chanid $serverid $chan] "[dict get $msg src] has joined $chan" -tags system
         }
     }
     hook handleKICK irken 50 {serverid msg} {
@@ -770,16 +771,16 @@ namespace eval ::irken {
     hook handleKICK irken-display 75 {serverid msg} {
         lassign [dict get $msg args] chan target note
         set note [expr {$note ne "" ? " ($note)":""}]
-        addchantext [chanid $serverid $chan] "[dict get $msg src] kicks [expr {[isself $serverid $target] ? "you":$target}] from $chan.$note\n" -tags system
+        addchantext [chanid $serverid $chan] "[dict get $msg src] kicks [expr {[isself $serverid $target] ? "you":$target}] from $chan.$note" -tags system
     }
     hook handleMODE irken 50 {serverid msg} {
         set args [lassign [dict get $msg args] target]
         set chanid [chanid $serverid $target]
         set msgdest [expr {[ischannel $chanid] ? $chanid:$serverid}]
         if {[lsearch -exact [dict get $msg src] "!"] == -1} {
-            addchantext $msgdest "Mode for $target set to [lrange [dict get $msg args] 1 end]\n" -tags system
+            addchantext $msgdest "Mode for $target set to [lrange [dict get $msg args] 1 end]" -tags system
         } else {
-            addchantext $msgdest "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]\n" -tags system
+            addchantext $msgdest "[dict get $msg src] sets mode for $target to [lrange [dict get $msg args] 1 end]" -tags system
         }
         if {[ischannel $chanid]} {
             lassign {} changes params
@@ -840,11 +841,11 @@ namespace eval ::irken {
             }
             set user [lsearch -exact -inline -index 0 [dict get $::channelinfo $chanid users] $oldnick]
             if {$user eq ""} {return}
-            addchantext $chanid "$oldnick is now known as $newnick\n" -tags system
+            addchantext $chanid "$oldnick is now known as $newnick" -tags system
         }
         set newchanid [chanid $serverid $newnick]
         if {[dict exists $::channelinfo $newchanid]} {
-            addchantext $newchanid "$oldnick is now known as $newnick\n" -tags system
+            addchantext $newchanid "$oldnick is now known as $newnick" -tags system
         }
     }
     hook handleNOTICE irken 50 {serverid msg} {
@@ -865,10 +866,10 @@ namespace eval ::irken {
         set chanid [chanid $serverid $chan]
         if {[isself $serverid [dict get $msg src]]} {
             if {[dict exists $::channelinfo $chanid]} {
-                addchantext $chanid "You have left $chan.$note\n" -tags system
+                addchantext $chanid "You have left $chan.$note" -tags system
             }
         } else {
-            addchantext $chanid "[dict get $msg src] has left $chan.$note\n" -tags system
+            addchantext $chanid "[dict get $msg src] has left $chan.$note" -tags system
         }
     }
     hook handlePING irken 50 {serverid msg} {send $serverid "PONG :[dict get $msg args]"}
@@ -895,7 +896,7 @@ namespace eval ::irken {
             return -code break
         }
         ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
-        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]\n" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
+        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
     }
     hook handleQUIT irken 50 {serverid msg} {
         foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
@@ -911,12 +912,12 @@ namespace eval ::irken {
     hook handleQUIT irken-display 75 {serverid msg} {
         set note [expr {[set note [dict get? "" $msg trailing]] eq "" ? "":" ($note)"}]
         foreach chanid [dict get? {} $msg affectedchans] {
-            addchantext $chanid "[dict get $msg src] has quit$note\n" -tags system
+            addchantext $chanid "[dict get $msg src] has quit$note" -tags system
         }
         set chanid [chanid $serverid [dict get $msg src]]
         if {[.nav exists $chanid]} {
             .nav tag add disabled $chanid
-            addchantext $chanid "[dict get $msg src] has quit$note\n"
+            addchantext $chanid "[dict get $msg src] has quit$note"
         }
 
     }
@@ -924,42 +925,42 @@ namespace eval ::irken {
         set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
         set topic [dict get $msg trailing]
         setchantopic $chanid $topic
-        addchantext $chanid "[dict get $msg src] sets title to $topic\n" -tags system
+        addchantext $chanid "[dict get $msg src] sets title to $topic" -tags system
     }
     hook handleUnknown irken 50 {serverid msg} {
-        addchantext $serverid "[dict get $msg line]\n" -tags system
+        addchantext $serverid "[dict get $msg line]" -tags system
     }
 
     hook ctcpACTION irken 50 {serverid msg text} {
         ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
-        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg src] $text\n" -time [dict get $msg time] -tags [dict get? {} $msg tag]
+        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg src] $text" -time [dict get $msg time] -tags [dict get? {} $msg tag]
     }
     hook ctcpCLIENTINFO irken 50 {serverid msg text} {
         if {$text eq ""} {
-            addchantext $serverid "CTCP CLIENTINFO request from [dict get $msg src]\n" -tags system
+            addchantext $serverid "CTCP CLIENTINFO request from [dict get $msg src]" -tags system
             send $serverid "PRIVMSG [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
         } else {
-            addchantext $serverid "CTCP CLIENTINFO reply from [dict get $msg src]: $text\n" -tags system
+            addchantext $serverid "CTCP CLIENTINFO reply from [dict get $msg src]: $text" -tags system
         }
     }
     hook ctcpPING irken 50 {serverid msg text} {
-        addchantext $serverid "CTCP PING request from [dict get $msg src]: $text\n" -tags system
+        addchantext $serverid "CTCP PING request from [dict get $msg src]: $text" -tags system
         send $serverid "PRIVMSG [dict get $msg src] :\001PING $text\001"
     }
     hook ctcpTIME irken 50 {serverid msg text} {
         if {$text eq ""} {
-            addchantext $serverid "CTCP TIME request from [dict get $msg src]\n" -tags system
+            addchantext $serverid "CTCP TIME request from [dict get $msg src]" -tags system
             send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
         } else {
-            addchantext $serverid "CTCP TIME reply from [dict get $msg src]: $text\n" -tags system
+            addchantext $serverid "CTCP TIME reply from [dict get $msg src]: $text" -tags system
         }
     }
     hook ctcpVERSION irken 50 {serverid msg text} {
         if {$text eq ""} {
-            addchantext $serverid "CTCP VERSION request from [dict get $msg src]\n" -tags system
+            addchantext $serverid "CTCP VERSION request from [dict get $msg src]" -tags system
             send $serverid "PRIVMSG [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
         } else {
-            addchantext $serverid "CTCP VERSION reply from [dict get $msg src]: $text\n" -tags system
+            addchantext $serverid "CTCP VERSION reply from [dict get $msg src]: $text" -tags system
         }
     }
 
@@ -994,11 +995,11 @@ namespace eval ::irken {
     hook cmdCLOSE irken 50 {serverid arg} {
         set chanid [expr {[llength $arg] > 0 ? [chanid $serverid [lindex $arg 0]]:$::active}]
         if {![dict exists $::channelinfo $chanid]} {
-            addchantext $::active "No such channel [lindex $arg 0]\n" -tags system
+            addchantext $::active "No such channel [lindex $arg 0]" -tags system
             return -code break
         }
         if {[channelpart $chanid] eq ""} {
-            addchantext $::active "Closing a server window is not allowed.\n" -tags system
+            addchantext $::active "Closing a server window is not allowed." -tags system
             return -code break
         }
         if {[ischannel $chanid] && ![.nav tag has disabled $chanid]} {
@@ -1007,15 +1008,15 @@ namespace eval ::irken {
         removechan $chanid
     }
     hook cmdEVAL irken 50 {serverid arg} {
-        addchantext $::active "$arg -> [namespace eval :: $arg]\n" -tags system
+        addchantext $::active "$arg -> [namespace eval :: $arg]" -tags system
     }
     hook cmdME irken 50 {serverid arg} {
         if {[channelpart $::active] eq ""} {
-            addchantext $::active "This isn't a channel.\n" -tags system
+            addchantext $::active "This isn't a channel." -tags system
             return
         }
         send $serverid "PRIVMSG [channelpart $::active] :\001ACTION $arg\001"
-        addchantext $::active "[dict get $::serverinfo $serverid nick] $arg\n" -tags self
+        addchantext $::active "[dict get $::serverinfo $serverid nick] $arg" -tags self
     }
     hook cmdJOIN irken 50 {serverid arg} {
         set chanid [chanid $serverid $arg]
@@ -1028,27 +1029,27 @@ namespace eval ::irken {
         foreach line [split $text "\n"] {
             send $serverid "PRIVMSG $target :$text"
             ensurechan [chanid $serverid $target] "" {}
-            addchantext [chanid $serverid $target] "$text\n" -nick [dict get $::serverinfo $serverid nick] -tags self
+            addchantext [chanid $serverid $target] "$text" -nick [dict get $::serverinfo $serverid nick] -tags self
         }
     }
     hook cmdQUERY irken 50 {serverid arg} {
         if {$arg eq ""} {
-            addchantext $::active "Query: missing nick.\n" -tags system
+            addchantext $::active "Query: missing nick." -tags system
             return -code break
         }
         if {[ischannel [chanid $serverid $arg]]} {
-            addchantext $::active "Can't query a channel.\n" -tags system
+            addchantext $::active "Can't query a channel." -tags system
             return -code break
         }
         ensurechan [chanid $serverid $arg] "" {}
     }
     hook cmdRELOAD irken 50 {serverid arg} {
         namespace eval :: {source $::argv0}
-        addchantext $::active "Irken reloaded.\n" -tags system
+        addchantext $::active "Irken reloaded." -tags system
     }
     hook cmdSERVER irken 50 {serverid arg} {
         if {![dict exists $::config $arg]} {
-            addchantext $::active "$arg is not a server.\n" -tags system
+            addchantext $::active "$arg is not a server." -tags system
             return
         }
         connect $arg
@@ -1065,7 +1066,7 @@ namespace eval ::irken {
 
     proc returnkey {} {
         if {![dict exists $::serverinfo [serverpart $::active]]} {
-            addchantext $::active "Server is disconnected.\n" -tags system
+            addchantext $::active "Server is disconnected." -tags system
             return
         }
         set text [.cmd get]
@@ -1075,7 +1076,7 @@ namespace eval ::irken {
                 docmd [serverpart $::active] [string toupper $cmd] $text
             } elseif {$text ne ""} {
                 if {[channelpart $::active] eq ""} {
-                    addchantext $::active "This isn't a channel.\n" -tags system
+                    addchantext $::active "This isn't a channel." -tags system
                 } else {
                     hook call cmdMSG [serverpart $::active] "[channelpart $::active] $text"
                     .t yview end
@@ -1087,7 +1088,7 @@ namespace eval ::irken {
 
     proc setcurrenttopic {} {
         if {![ischannel $::active]} {
-            addchantext $::active "This isn't a channel.\n" -tags system
+            addchantext $::active "This isn't a channel." -tags system
             return
         }
         send [serverpart $::active] "TOPIC [channelpart $::active] :[.topic get]"

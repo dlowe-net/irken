@@ -32,7 +32,7 @@ namespace eval dtnotify {
             puts $fp "dtnotifyignore $ignore\n"
             close $fp
         } else {
-            addchantext $::active "Warning: unable to write to $confpath\n" -tags {fg_red italic}
+            addchantext $::active "Warning: unable to write to $confpath" -tags {fg_red italic}
         }
     }
 
@@ -90,25 +90,25 @@ namespace eval dtnotify {
             "ignore" {
                 if {$args eq ""} {
                     if {$ignore eq ""} {
-                        addchantext $::active "Desktop notification ignore list is empty\n"
+                        addchantext $::active "Desktop notification ignore list is empty"
                     } else {
-                        addchantext $::active "Desktop notification ignore list: $ignore\n"
+                        addchantext $::active "Desktop notification ignore list: $ignore"
                     }
                     return
                 }
                 lappend ignore {*}$args
                 updatedtnotifyconf
-                addchantext $::active "Ignoring $args for desktop notifications\n"
+                addchantext $::active "Ignoring $args for desktop notifications"
             }
             "unignore" {
                 foreach nick $args {
                     set ignore [lsearch -all -not -exact $ignore $nick]
                 }
                 updatedtnotifyconf
-                addchantext $::active "Unignoring $args for desktop notifications\n"
+                addchantext $::active "Unignoring $args for desktop notifications"
             }
             default {
-                addchantext $::active "Usage /dtnotify (ignore|unignore) <nicks>\n"
+                addchantext $::active "Usage /dtnotify (ignore|unignore) <nicks>"
             }
         }
     }

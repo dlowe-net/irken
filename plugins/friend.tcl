@@ -43,7 +43,7 @@ namespace eval ::friend {
             }
             close $fp
         } else {
-            addchantext $::active "Warning: unable to write to $confpath\n" -tags {fg_red italic}
+            addchantext $::active "Warning: unable to write to $confpath" -tags {fg_red italic}
         }
     }
 
@@ -135,18 +135,18 @@ namespace eval ::friend {
         set friendlist [dict get? {} $friends $serverid]
         if {$arg eq ""} {
             if {[llength $friendlist] == 0} {
-                addchantext $::active "You are not friends with anyone on $serverid.\n" -tags italic
+                addchantext $::active "You are not friends with anyone on $serverid." -tags italic
             } else {
-                addchantext $::active "Friends on $serverid: $friendlist\n" -tags italic
+                addchantext $::active "Friends on $serverid: $friendlist" -tags italic
             }
             return
         }
         set targets [friendnicks $serverid {*}[split $arg " "]]
         if {$targets eq ""} {
-            addchantext $::active "No nicks added to friend list on $serverid.\n" -tags italic
+            addchantext $::active "No nicks added to friend list on $serverid." -tags italic
             return
         }
-        addchantext $::active "Added to friend list on $serverid: $targets\n" -tags italic
+        addchantext $::active "Added to friend list on $serverid: $targets" -tags italic
         updatefriendconf
         foreach target $targets {
             ensurechan [chanid $serverid $target] $target {}
@@ -167,9 +167,9 @@ namespace eval ::friend {
         set friendlist [dict get? {} $friends $serverid]
         if {$arg eq ""} {
             if {[llength $friendlist] == 0} {
-                addchantext $::active "You are not friends with anyone.\n" -tags italic
+                addchantext $::active "You are not friends with anyone." -tags italic
             } else {
-                addchantext $::active "Friends: $friendlist\n" -tags italic
+                addchantext $::active "Friends: $friendlist" -tags italic
             }
             return
         }
@@ -182,9 +182,9 @@ namespace eval ::friend {
         }
         dict set friends $serverid $friendlist
         if {$targets eq ""} {
-            addchantext $::active "No nicks removed from friend list.\n" -tags italic
+            addchantext $::active "No nicks removed from friend list." -tags italic
         } else {
-            addchantext $::active "Removed from friend list: $targets\n" -tags italic
+            addchantext $::active "Removed from friend list: $targets" -tags italic
             updatefriendconf
             dict for {chanid info} $::channelinfo {
                 if {[irken::serverpart $chanid] eq $serverid} {
