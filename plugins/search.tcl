@@ -32,6 +32,10 @@ namespace eval ::search {
                 }
             }
             pack .search.t -fill both -expand 1
+            bind .search <Escape> {destroy .search}
+            bind .search <Prior> {.search.t yview scroll -1 page}
+            bind .search <Next> {.search.t yview scroll 1 page}
+            bind .search <Control-c> {if {[set r [.search.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.search.t get {*}$r]}}
         } else {
             .search.t configure -state normal
             .search.t delete 1.0 end
