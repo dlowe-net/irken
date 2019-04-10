@@ -87,14 +87,40 @@ Keyboard commands
 * `PageUp` / `PageDown` - pages up and down on the current window
 * `Up arrow` / `Down arrow` - on command line, goes into the past or future in the command history
 * `Tab` - on command line, completes nick at the cursor.  Press tab again for
-next match.
+  next match.
 * `Return` - on topic line, sets the topic to whatever is in the text box
 * `Return` - on command line, either does the command or sends a message to the
   current channel.
-* `Control-space` - navigate to the next channel where there are unread messages.
+* `Control-space` - navigate to the next channel where there are unread
+  messages.
 
-Plugins
--------
+Included Plugins
+----------------
+
+Copy these to your .config/irken/ directory to activate.
+
+* `daybreak` - Every midnight, inserts the date into every channel so that you
+  can tell on which day a given message was sent.
+* `dtnotify` - Creates a desktop notification when your nick is mentioned, using
+  the /usr/bin/notify-send binary.  Since the notification isn't controlled by
+  irken, though, they tend to pile up.
+* `filterjoins` - Keeps track of who has talked in a channel, and hides
+  join, part, and quit messages from those who haven't talked.
+* `friend` - Allows addition of "friends" per-server.  Friends show up on the
+  top of the user list in channels, their messages are highlighted in blue, and
+  a message window is automatically opened for them on startup.
+* `ignore` - Allows you to ignore all messages from certain nicks.
+* `ijchain` - Implements integration with the ijchain bot in the freenode #tcl
+channel.
+* `inlineimages` - Displays images mentioned on IRC inline.
+* `logging` - Logs channel activity to a file
+* `restorewinpos` - Keeps track of your window position and opens it at the same
+place on startup.
+* `search` - Adds /search <pattern> command which outputs matching lines to
+  a new window.
+
+Writing New Plugins
+-------------------
 
 Plugins are implemented as Tcl files which are loaded on startup.  Typically, a
 plugin will install hooks to add commands or respond to messages.  Hooks are
