@@ -161,12 +161,12 @@ namespace eval ::irken {
         pack .chaninfo -in .userframe -side top -fill x -padx 10 -pady 5
         pack .users -in .userframe -fill both -expand 1 -padx 1 -pady 5
         pack .root -fill both -expand 1
-        bind .root <Prior> {.t yview scroll -1 page}
-        bind .root <Next> {.t yview scroll 1 page}
-        bind .root <Control-Prior> {ttk::treeview::Keynav .nav up}
-        bind .root <Control-Next> {ttk::treeview::Keynav .nav down}
-        bind .root <Control-space> [namespace code {nexttaggedchannel}]
-        bind .root <Control-c> {if {[set r [.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.t get {*}$r]}}
+        bind . <Prior> {.t yview scroll -1 page}
+        bind . <Next> {.t yview scroll 1 page}
+        bind . <Control-Prior> {ttk::treeview::Keynav .nav up}
+        bind . <Control-Next> {ttk::treeview::Keynav .nav down}
+        bind . <Control-space> [namespace code {nexttaggedchannel}]
+        bind . <Control-c> {if {[set r [.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.t get {*}$r]}}
         bind .topic <Return> [namespace code setcurrenttopic]
         bind .cmd <Return> [namespace code returnkey]
         bind .cmd <Up> [namespace code [list history up]]
