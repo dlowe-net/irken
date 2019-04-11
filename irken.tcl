@@ -164,7 +164,7 @@ namespace eval ::irken {
         bind .root <Prior> {.t yview scroll -1 page}
         bind .root <Next> {.t yview scroll 1 page}
         bind .root <Control-Prior> {ttk::treeview::Keynav .nav up}
-        bind .root <Control-Next> [{ttk::treeview::Keynav .nav down}
+        bind .root <Control-Next> {ttk::treeview::Keynav .nav down}
         bind .root <Control-space> [namespace code {nexttaggedchannel}]
         bind .root <Control-c> {if {[set r [.t tag nextrange sel 0.0]] ne ""} {clipboard clear; clipboard append [.t get {*}$r]}}
         bind .topic <Return> [namespace code setcurrenttopic]

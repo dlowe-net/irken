@@ -221,7 +221,7 @@ test parseline {} {
 
 test addchantext {irken_fixture} {
     irken::addchantext "TestServer/#test" "This is a test." -nick "tester" -tags self
-    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\ttester\t" "nick" "This is a test." {self line}]
+    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\ttester\t" "nick" "This is a test." {self line} "\n" {}]
 }
 
 test updateusermodes {irken_fixture} {
@@ -343,7 +343,7 @@ test handleKICKself {irken_fixture} {
     .nav selection set $chanid
     irken::selectchan
     hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "test" "get out"] trailing "get out"]
-    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks you from #test. (get out)\n" {system line}]
+    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks you from #test. (get out)" {system line} "\n" {}]
 }
 
 test handleKICKother {irken_fixture} {
@@ -352,7 +352,7 @@ test handleKICKother {irken_fixture} {
     .nav selection set $chanid
     irken::selectchan
     hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "target" "get out"] trailing "get out"]
-    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks target from #test. (get out)\n" {system line}]
+    asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks target from #test. (get out)" {system line} "\n" {}]
 }
 
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
