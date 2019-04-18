@@ -3,7 +3,7 @@
 package require tls
 package require BWidget
 
-proc ::tcl::dict::get? {default args} {expr {[catch {dict get {*}$args} val] ? $default:$val}}
+proc ::tcl::dict::get? {default dict key args} {if {[dict exists $dict $key {*}$args]} {return [dict get $dict $key {*}$args]} {return $default}}
 namespace ensemble configure dict -map [dict merge [namespace ensemble configure dict -map] {get? ::tcl::dict::get?}]
 
 # Hooks
@@ -43,7 +43,7 @@ proc hook {op name args} {
 
 namespace eval ::irc {
     namespace export send
-    proc send {serverid str} {puts [dict get $::serverinfo $serverid fd] $str;flush [dict get $::serverinfo $serverid fd]}
+    proc send {serverid str} {set chan [dict get $::serverinfo $serverid chan]; puts $chan $str;flush $chan}
 }
 
 namespace eval ::irken {
@@ -66,8 +66,8 @@ namespace eval ::irken {
         catch {font create Irken.Fixed {*}[font actual TkFixedFont] -size 10}
 
         # ::config is a dict keyed on serverid containing config for each server, loaded from a file.
-        # ::servers is a dict keyed on fd containing the serverid
-        # ::serverinfo is a dict keyed on serverid containing the fd, current nick, and other server-specific info
+        # ::servers is a dict keyed on chan containing the serverid
+        # ::serverinfo is a dict keyed on serverid containing the chan, current nick, and other server-specific info
         # ::channeltext is a dict keyed on chanid containing channel text with tags
         # ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
         # ::active is the chanid of the shown channel.
@@ -631,17 +631,22 @@ namespace eval ::irken {
         set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
         addchantext $serverid "Connecting to $serverid ($host:$port)..." -tags system
-        set fd [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
-        fconfigure $fd -blocking 0 -buffering line
-        fileevent $fd writable [namespace code [list connected $fd]]
-        fileevent $fd readable [namespace code [list recv $fd]]
-        dict set ::servers $fd $serverid
-        dict set ::serverinfo $serverid [dict merge [dict create fd $fd nick [dict get $::config $serverid -nick]] $::ircdefaults]
+        set chan [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
+        fileevent $chan writable [namespace code [list connected $chan]]
+        dict set ::servers $chan $serverid
+        dict set ::serverinfo $serverid [dict merge [dict create chan $chan nick [dict get $::config $serverid -nick]] $::ircdefaults]
     }
 
-    proc connected {fd} {
-        fileevent $fd writable {}
-        set serverid [dict get $::servers $fd]
+    proc connected {chan} {
+        set serverid [dict get $::servers $chan]
+        if {[set err [chan configure $chan -error]] ne ""} {
+            close $chan
+            addchantext $serverid "Connection failure: $err" -tags system
+            return
+        }
+        chan configure $chan -blocking 0 -buffering line
+        fileevent $chan writable {}
+        fileevent $chan readable [namespace code [list recv $chan]]
         .nav tag remove disabled $serverid
         addchantext $serverid "Connected." -tags system
         send $serverid "CAP REQ :multi-prefix\nCAP REQ :znc.in/server-time-iso\nCAP REQ :server-time\nCAP END"
@@ -652,13 +657,11 @@ namespace eval ::irken {
         send $serverid "USER [dict get $::config $serverid -user] 0 * :Irken user"
     }
 
-    proc disconnected {fd} {
-        fileevent $fd writable {}
-        fileevent $fd readable {}
-
-        set serverid [dict get $::servers $fd]
+    proc disconnected {chan} {
+        close $chan
+        set serverid [dict get $::servers $chan]
         .nav tag add disabled [concat [list $serverid] [.nav children $serverid]]
-        addchantext $serverid "Disconnected." -tags system
+        addchantext $serverid "Server disconnected." -tags system
         hook call disconnection $serverid
     }
 
@@ -981,14 +984,11 @@ namespace eval ::irken {
         return $msg
     }
 
-    proc recv {fd} {
-        if {[catch {gets $fd line} len] || [eof $fd]} {
-            disconnected $fd
-            return
-        }
-        if {$len == 0} {return}
-        if {[set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
-            hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $fd] $msg
+    proc recv {chan} {
+        if {[catch {gets $chan line} len] || [eof $chan]} {
+            disconnected $chan
+        } elseif {$len != 0 && [set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
+            hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $chan] $msg
         }
     }
 

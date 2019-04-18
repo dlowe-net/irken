@@ -52,19 +52,20 @@ proc runtests {} {
     exit 0
 }
 
-proc testserver {fd addr port} {
-    fconfigure $fd -blocking 0
-    dict set ::serverinfo "TestServer" sfd $fd
+proc testserver {chan addr port} {
+    fconfigure $chan -blocking 0
+    dict set ::serverinfo "TestServer" schan $chan
 }
 
 proc irken_fixture {op} {
     if {$op eq "setup"} {
         irken::initvars
         irken::initui
-        set ::serverfd [socket -server testserver -myaddr "localhost" 0]
-        set fd [socket "localhost" [lindex [fconfigure $::serverfd -sockname] 2]]
-        dict set ::serverinfo "TestServer" [dict merge [dict create fd $fd nick "test" casemapping "rfc1459"] $::ircdefaults]
-        fconfigure $fd -blocking 0
+        set ::serverchan [socket -server testserver -myaddr "localhost" 0]
+        set chan [socket "localhost" [lindex [fconfigure $::serverchan -sockname] 2]]
+        dict set ::servers $chan "TestServer"
+        dict set ::serverinfo "TestServer" [dict merge [dict create chan $chan nick "test" casemapping "rfc1459"] $::ircdefaults]
+        fconfigure $chan -blocking 0
         vwait ::serverinfo
         irken::ensurechan "TestServer" "" {}
         irken::ensurechan "TestServer/#test" "#test" {}
@@ -74,9 +75,9 @@ proc irken_fixture {op} {
         irken::selectchan
         return
     }
-    close [dict get $::serverinfo "TestServer" sfd]
-    close [dict get $::serverinfo "TestServer" fd]
-    close $::serverfd
+    catch {close [dict get $::serverinfo "TestServer" schan]}
+    catch {close [dict get $::serverinfo "TestServer" chan]}
+    catch {close $::serverchan}
     destroy {*}[lsearch -all -inline -not -exact [winfo children .] ".#BWidget"]
 }
 
@@ -270,10 +271,10 @@ test removechan {irken_fixture} {
 
 test closecmd {irken_fixture} {
     .cmd configure -validate none
-    .cmd insert 0 "/close #test"
+    .cmd insert 0 "/close #test Testing"
     .cmd configure -validate key
     irken::returnkey
-    asserteq [gets [dict get $::serverinfo "TestServer" sfd]] "PART #test :"
+    asserteq [gets [dict get $::serverinfo "TestServer" schan]] "PART #test :Testing"
     assert {![.nav exists "TestServer/#test"]}
     asserteq [.nav selection] "TestServer/target"
     asserteq [.nav focus] "TestServer/target"
@@ -353,6 +354,17 @@ test handleKICKother {irken_fixture} {
     irken::selectchan
     hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "target" "get out"] trailing "get out"]
     asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks target from #test. (get out)" {system line} "\n" {}]
+}
+
+test disconnect {irken_fixture} {
+    assert {![.nav tag has disabled "TestServer"]}
+    set schan [dict get $::serverinfo "TestServer" schan]
+    fconfigure $schan -blocking 0
+    close $schan
+    irken::recv [dict get $::serverinfo "TestServer" chan]
+    assert {[.nav tag has disabled "TestServer"]}
+    assert {[.nav tag has disabled "TestServer/#test"]}
+    asserteq [lrange [dict get $::channeltext "TestServer"] 2 end] [list "\t*\t" {nick} "Server disconnected." {system line} "\n" {}]
 }
 
 if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]]} {
