@@ -593,7 +593,7 @@ namespace eval ::irken {
     proc sendpendingison {} {
         set servernicks [dict create]
         foreach chanid [dict keys $::channelinfo] {
-            if {[channelpart $chanid] ne "" && ![ischannel $chanid]} {
+            if {[channelpart $chanid] ne "" && ![ischannel $chanid] && ![.nav tag has disabled [serverpart $chanid]]} {
                 dict lappend servernicks [serverpart $chanid] [channelpart $chanid]
             }
         }
