@@ -43,7 +43,7 @@ proc hook {op name args} {
 
 namespace eval ::irc {
     namespace export send
-    proc send {serverid str} {set chan [dict get $::serverinfo $serverid chan]; puts $chan $str;flush $chan}
+    proc send {serverid str} {set chan [dict get $::serverinfo $serverid chan]; try {puts $chan $str} on error {err} {irken::addchantext $serverid "WRITE ERROR: $err" -tags system};flush $chan}
 }
 
 namespace eval ::irken {
