@@ -48,7 +48,7 @@ namespace eval ::irc {
 
 namespace eval ::irken {
     namespace import ::irc::*
-    namespace export chanid addchantext ensurechan updateusermodes isself ischannel serverpart
+    namespace export chanid addchantext ensurechan updateusermodes isself ischannel serverpart channelpart
 
     # A chanid is $serverid for the server channel, $serverid/$channel for channel display.
     proc chanid {serverid chan} { if {$chan eq ""} {return $serverid} {return [string cat $serverid "/" [irctolower [dict get $::serverinfo $serverid casemapping] $chan]]} }
@@ -288,10 +288,9 @@ namespace eval ::irken {
             return
         }
         updatechaninfo $chanid
-        set items [lmap x [lsort -command "usercmp [serverpart $chanid]" $users] {lindex $x 0}]
-        set count [llength $items]
-        for {set i 0} {$i < $count} {incr i} {
-            .users move [lindex $items $i] {} $i
+        set r -1
+        foreach item [lsort -command "usercmp [serverpart $chanid]" $users] {
+            .users move [lindex $item 0] {} [incr r]
         }
     }
 
