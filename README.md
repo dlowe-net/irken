@@ -99,6 +99,7 @@ Included Plugins
 
 Copy these to your .config/irken/ directory to activate.
 
+* `chanlist` - Adds a GUI for browsing the channel list returned by /LIST
 * `daybreak` - Every midnight, inserts the date into every channel so that you
   can tell on which day a given message was sent.
 * `dtnotify` - Creates a desktop notification when your nick is mentioned, using
@@ -113,7 +114,6 @@ Copy these to your .config/irken/ directory to activate.
 * `ijchain` - Implements integration with the ijchain bot in the freenode #tcl
 channel.
 * `inlineimages` - Displays images mentioned on IRC inline.
-* `logging` - Logs channel activity to a file
 * `restorewinpos` - Keeps track of your window position and opens it at the same
 place on startup.
 * `search` - Adds /search <pattern> command which outputs matching lines to
