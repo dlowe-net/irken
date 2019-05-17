@@ -49,7 +49,7 @@ proc runtests {} {
         }
     }
     puts stdout "$testcount tests run, $failcount failed."
-    exit 0
+    exit [expr {$failcount == 0 ? 0:1}]
 }
 
 proc testserver {chan addr port} {
