@@ -142,7 +142,7 @@ namespace eval ::irken {
         .t tag bind hlink <Leave> {%W configure -cursor xterm}
         ttk::frame .cmdline
         ttk::label .nick -padding 3
-        ttk::entry .cmd -validate key -validatecommand [namespace code {stopimplicitentry}] -font Irken.Fixed
+        text .cmd -height 1 -wrap word -font Irken.Fixed
         ttk::treeview .users -show tree -selectmode browse
         .users tag config q -foreground gray -image [image create photo -format png -data $::ownericon]
         .users tag config a -foreground orange -image [image create photo -format png -data $::adminicon]
@@ -172,6 +172,7 @@ namespace eval ::irken {
         bind .cmd <Up> [namespace code [list history up]]
         bind .cmd <Down> [namespace code [list history down]]
         bind .cmd <Tab> [namespace code tabcomplete]
+        bind .cmd <KeyPress> [namespace code {stopimplicitentry %K}]
 
         hook call setupui
         # this is called after the setupui hook because earlier tags override
@@ -227,10 +228,9 @@ namespace eval ::irken {
         .chaninfo configure -text [expr {[ischannel $chanid] ? "[llength [dict get $::channelinfo $chanid users]] users":""}]
     }
 
-    proc stopimplicitentry {} {
+    proc stopimplicitentry {key} {
         dict unset ::channelinfo $::active historyidx
         dict unset ::channelinfo $::active tab
-        return 1
     }
 
     proc history {op} {
@@ -242,10 +242,8 @@ namespace eval ::irken {
         }
         if {$idx eq $oldidx} {return}
         dict set ::channelinfo $::active historyidx $idx
-        .cmd configure -validate none
-        .cmd delete 0 end
-        if {$idx ne {}} {.cmd insert 0 [lindex $cmdhistory $idx]}
-        .cmd configure -validate key
+        .cmd delete 1.0 end
+        if {$idx ne {}} {.cmd insert 1.0 [lindex $cmdhistory $idx]}
     }
     proc tabcomplete {} {
         if {![ischannel $::active]} {return -code break}
@@ -257,7 +255,7 @@ namespace eval ::irken {
                 set user [lsearch -inline -nocase -start [expr {$pos+1}] -index 0 -glob $userlist "[globescape $tabprefix]*"]
             }
         } else {
-            lassign [list [.cmd get] [.cmd index insert]] s pt
+            lassign [list [.cmd get 1.0 {end - 1 char}] [regexp -inline {\d+$} [.cmd index insert]]] s pt
             if {[string index $s $pt] eq " "} {
                 set pt [expr {$pt - 1}]
                 if {[string index $s $pt] eq " "} {
@@ -275,10 +273,8 @@ namespace eval ::irken {
             }
         }
         set str [expr {$tabstart == 0 ? "[lindex $user 0]: ":[lindex $user 0]}]
-        .cmd configure -validate none
-        .cmd delete $tabstart $tabend
-        .cmd insert $tabstart $str
-        .cmd configure -validate key
+        .cmd delete 1.$tabstart 1.$tabend
+        .cmd insert 1.$tabstart $str
         dict set ::channelinfo $::active tab [list $tabprefix [lindex $user 0] $tabstart [expr {$tabstart + [string length $str]}]]
         return -code break
     }
@@ -1068,7 +1064,7 @@ namespace eval ::irken {
             addchantext $::active "Server is disconnected." -tags system
             return
         }
-        set text [.cmd get]
+        set text [.cmd get 1.0 {end - 1 char}]
         dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
         foreach text [split $text "\n"] {
             if {[regexp {^/(\S+)\s*(.*)} $text -> cmd text]} {
@@ -1082,7 +1078,7 @@ namespace eval ::irken {
                 }
             }
         }
-        .cmd delete 0 end
+        .cmd delete 1.0 end
     }
 
     proc setcurrenttopic {} {
