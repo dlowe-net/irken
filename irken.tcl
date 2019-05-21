@@ -225,7 +225,7 @@ namespace eval ::irken {
     }
 
     proc updatechaninfo {chanid} {
-        .chaninfo configure -text [expr {[ischannel $chanid] ? "[llength [dict get $::channelinfo $chanid users]] users":""}]
+        .chaninfo configure -text [expr {![ischannel $chanid] ? "":[.nav tag has disabled $chanid] ? "Unjoined":"[llength [dict get $::channelinfo $chanid users]] users"}]
     }
 
     proc stopimplicitentry {key} {
@@ -247,8 +247,7 @@ namespace eval ::irken {
     }
     proc tabcomplete {} {
         if {![ischannel $::active]} {return -code break}
-        set user {}
-        set userlist [dict get $::channelinfo $::active users]
+        lassign [list [dict get $::channelinfo $::active users]] userlist user
         if {[dict exists $::channelinfo $::active tab]} {
             lassign [dict get $::channelinfo $::active tab] tabprefix tablast tabstart tabend
             if {[set pos [lsearch -exact -index 0 $userlist $tablast]] != -1} {
@@ -262,8 +261,7 @@ namespace eval ::irken {
                     return -code break
                 }
             }
-            set tabstart [string wordstart $s $pt]
-            set tabend [string wordend $s $pt]
+            lassign [list [string wordstart $s $pt] [string wordend $s $pt]] tabstart tabend
             set tabprefix [string trimright [string range $s $tabstart $tabend]]
         }
         if {$user eq ""} {
@@ -689,10 +687,12 @@ namespace eval ::irken {
     hook handle303 irken 50 {serverid msg} {
         foreach nick [split [lindex [dict get $msg args] 0] " "] {
             set chanid [chanid $serverid $nick]
-            ensurechan $chanid $nick {}
-            if {[.nav tag has disabled $chanid]} {
-                .nav tag remove disabled $chanid
-                addchantext $chanid "[channelpart $chanid] has logged in." -tags system
+            if {[.nav exists $chanid]} {
+                ensurechan $chanid $nick {}
+                if {[.nav tag has disabled $chanid]} {
+                    .nav tag remove disabled $chanid
+                    addchantext $chanid "[channelpart $chanid] has logged in." -tags system
+                }
             }
         }
     }
@@ -855,6 +855,11 @@ namespace eval ::irken {
         if {[isself $serverid [dict get $msg src]]} {
             if {[.nav exists $chanid]} {
                 .nav tag add disabled $chanid
+                dict set ::channelinfo $chanid users {}
+                if {$chanid eq $::active} {
+                    .users delete [.users children {}]
+                    updatechaninfo $chanid
+                }
             }
         }
     }
