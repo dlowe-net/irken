@@ -142,7 +142,7 @@ namespace eval ::irken {
         .t tag bind hlink <Leave> {%W configure -cursor xterm}
         ttk::frame .cmdline
         ttk::label .nick -padding 3
-        text .cmd -height 1 -wrap word -font Irken.Fixed
+        text .cmd -height 1 -wrap none -font Irken.Fixed
         ttk::treeview .users -show tree -selectmode browse
         .users tag config q -foreground gray -image [image create photo -format png -data $::ownericon]
         .users tag config a -foreground orange -image [image create photo -format png -data $::adminicon]

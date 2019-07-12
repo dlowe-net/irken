@@ -270,6 +270,7 @@ test removechan {irken_fixture} {
 }
 
 test closecmd {irken_fixture} {
+    assert {[.nav exists "TestServer/#test"]}
     .cmd insert 1.0 "/close #test Testing"
     irken::returnkey
     asserteq [gets [dict get $::serverinfo "TestServer" schan]] "PART #test :Testing"
