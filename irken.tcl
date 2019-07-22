@@ -941,19 +941,19 @@ namespace eval ::irken {
     hook ctcpCLIENTINFO irken 50 {serverid msg text} {
         if {$text eq ""} {
             addchantext $serverid "CTCP CLIENTINFO request from [dict get $msg src]" -tags system
-            send $serverid "PRIVMSG [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
+            send $serverid "NOTICE [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
         } else {
             addchantext $serverid "CTCP CLIENTINFO reply from [dict get $msg src]: $text" -tags system
         }
     }
     hook ctcpPING irken 50 {serverid msg text} {
         addchantext $serverid "CTCP PING request from [dict get $msg src]: $text" -tags system
-        send $serverid "PRIVMSG [dict get $msg src] :\001PING $text\001"
+        send $serverid "NOTICE [dict get $msg src] :\001PING $text\001"
     }
     hook ctcpTIME irken 50 {serverid msg text} {
         if {$text eq ""} {
             addchantext $serverid "CTCP TIME request from [dict get $msg src]" -tags system
-            send $serverid "PRIVMSG [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
+            send $serverid "NOTICE [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
         } else {
             addchantext $serverid "CTCP TIME reply from [dict get $msg src]: $text" -tags system
         }
@@ -961,7 +961,7 @@ namespace eval ::irken {
     hook ctcpVERSION irken 50 {serverid msg text} {
         if {$text eq ""} {
             addchantext $serverid "CTCP VERSION request from [dict get $msg src]" -tags system
-            send $serverid "PRIVMSG [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
+            send $serverid "NOTICE [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
         } else {
             addchantext $serverid "CTCP VERSION reply from [dict get $msg src]: $text" -tags system
         }
