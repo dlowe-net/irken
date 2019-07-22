@@ -244,6 +244,7 @@ namespace eval ::irken {
         dict set ::channelinfo $::active historyidx $idx
         .cmd delete 1.0 end
         if {$idx ne {}} {.cmd insert 1.0 [lindex $cmdhistory $idx]}
+        return -code break
     }
     proc tabcomplete {} {
         if {![ischannel $::active]} {return -code break}
@@ -1067,7 +1068,7 @@ namespace eval ::irken {
     proc returnkey {} {
         if {![dict exists $::serverinfo [serverpart $::active]]} {
             addchantext $::active "Server is disconnected." -tags system
-            return
+            return -code break
         }
         set text [.cmd get 1.0 {end - 1 char}]
         dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
@@ -1084,6 +1085,7 @@ namespace eval ::irken {
             }
         }
         .cmd delete 1.0 end
+        return -code break
     }
 
     proc setcurrenttopic {} {

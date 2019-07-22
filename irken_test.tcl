@@ -272,7 +272,7 @@ test removechan {irken_fixture} {
 test closecmd {irken_fixture} {
     assert {[.nav exists "TestServer/#test"]}
     .cmd insert 1.0 "/close #test Testing"
-    irken::returnkey
+    catch {irken::returnkey} _
     asserteq [gets [dict get $::serverinfo "TestServer" schan]] "PART #test :Testing"
     assert {![.nav exists "TestServer/#test"]}
     asserteq [.nav selection] "TestServer/target"
@@ -286,7 +286,7 @@ test closecmdwithuser {irken_fixture} {
     .nav selection set [irken::chanid "TestServer" "target"]
     irken::selectchan
     .cmd insert 1.0 "/close target"
-    irken::returnkey
+    catch {irken::returnkey} _
     assert {![.nav exists "TestServer/target"]}
     asserteq [.nav selection] "TestServer/#test"
     asserteq [.nav focus] "TestServer/#test"
