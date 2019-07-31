@@ -22,7 +22,7 @@ Features
 - command history
 - color and formatting
 
-![Screenshot](https://raw.githubusercontent.com/dlowe-net/irken/master/irken.png)
+![Screenshot](https://raw.githubusercontent.com/dlowe-net/irken/master/screenshot.png)
 
 Running
 -------
