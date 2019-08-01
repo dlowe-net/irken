@@ -36,7 +36,7 @@ These instructions are for Linux.  Windows support is unlikely.
 2. Copy or symlink any desired plugins into into `~/.config/irken/`  You may
    have to make the directory.
 3. Run `irken.tcl`. By default, it will create a configuration file that
-   connects you to freenode.net and joins the #tcl channel.
+   connects you to freenode.net and joins the #irken channel.
 
 Configuration
 -------------

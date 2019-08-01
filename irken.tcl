@@ -85,7 +85,7 @@ namespace eval ::irken {
                 puts stderr "Couldn't write default config.  Exiting."
                 exit 1
             }
-            puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True}
+            puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {#irken}}
             close $fp
             set configpaths [list "$configdir/50irken.tcl"]
         }
