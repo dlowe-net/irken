@@ -96,6 +96,7 @@ Included Plugins
 
 Copy these to your .config/irken/ directory to activate.
 
+* `aliases` - Allows user-defined commands
 * `chanlist` - Adds a GUI for browsing the channel list returned by /LIST
 * `daybreak` - Every midnight, inserts the date into every channel so that you
   can tell on which day a given message was sent.
@@ -108,11 +109,14 @@ Copy these to your .config/irken/ directory to activate.
   top of the user list in channels, their messages are highlighted in blue, and
   a message window is automatically opened for them on startup.
 * `ignore` - Allows you to ignore all messages from certain nicks.
-* `ijchain` - Implements integration with the ijchain bot in the freenode #tcl
-channel.
+* `ijchain` - Implements integration with the ijchain and ischain bots
+in the freenode #tcl channel.
 * `inlineimages` - Displays images mentioned on IRC inline.
+* `popupmenus` - Add popup menus for operations on channels, servers,
+  and users.
 * `restorewinpos` - Keeps track of your window position and opens it at the same
 place on startup.
+* `rot13` - Add popup menu command for decoding rot13 and a /rot13 command.
 * `search` - Adds /search <pattern> command which outputs matching lines to
   a new window.
 
