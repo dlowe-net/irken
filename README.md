@@ -5,9 +5,6 @@ Irken is an attempt to build a small, functional, IRC client in Tcl/Tk.  It
 aims to honor as much of IRC as possible while still remaining small enough to
 understand by tinkerers.
 
-In order to keep Irken small, the main file is arbitrarily capped to 1000
-lines of non-blank, non-comment code.
-
 Features
 --------
 
