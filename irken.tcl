@@ -85,7 +85,7 @@ namespace eval ::irken {
                 puts stderr "Couldn't write default config.  Exiting."
                 exit 1
             }
-            puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {#irken}}
+            puts $fp {server "Freenode" -host irc.freenode.net -port 6697 -secure true -nick tcl-$::env(USER) -user $::env(USER) -autoconnect True -autojoin {\#irken}}
             close $fp
             set configpaths [list "$configdir/50irken.tcl"]
         }
@@ -1009,7 +1009,7 @@ namespace eval ::irken {
         removechan $chanid
     }
     hook cmdEVAL irken 50 {serverid arg} {
-        addchantext $::active "$arg -> [namespace eval :: $arg]" -tags system
+        addchantext $::active "$arg -> [namespace eval ::irken $arg]" -tags system
     }
     hook cmdME irken 50 {serverid arg} {
         if {[channelpart $::active] eq ""} {
@@ -1026,11 +1026,14 @@ namespace eval ::irken {
         send $serverid "JOIN :$arg"
     }
     hook cmdMSG irken 50 {serverid arg} {
-        regexp -- {^(\S+) (.*)$} $arg -> target text
-        foreach line [split $text "\n"] {
-            send $serverid "PRIVMSG $target :$text"
-            ensurechan [chanid $serverid $target] "" {}
-            addchantext [chanid $serverid $target] "$text" -nick [dict get $::serverinfo $serverid nick] -tags self
+        if {[regexp -- {^(\S+) (.*)$} $arg -> target text]} {
+            foreach line [split $text "\n"] {
+                send $serverid "PRIVMSG $target :$text"
+                ensurechan [chanid $serverid $target] "" {}
+                addchantext [chanid $serverid $target] "$text" -nick [dict get $::serverinfo $serverid nick] -tags self
+            }
+        } else {
+            addchantext $::active "Usage: /MSG <target> <message>" -tags system
         }
     }
     hook cmdQUERY irken 50 {serverid arg} {
@@ -1056,7 +1059,7 @@ namespace eval ::irken {
         connect $arg
     }
 
-    proc docmd {serverid cmd arg} {
+    hook docmd irken 50 {serverid cmd arg} {
         set hook "cmd[string toupper $cmd]"
         if {[hook exists $hook]} {
             hook call $hook $serverid $arg
@@ -1065,25 +1068,29 @@ namespace eval ::irken {
         }
     }
 
-    proc returnkey {} {
+    hook userinput irken 50 {text} {
         if {![dict exists $::serverinfo [serverpart $::active]]} {
             addchantext $::active "Server is disconnected." -tags system
-            return -code break
+            return
         }
-        set text [.cmd get 1.0 {end - 1 char}]
-        dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
         foreach text [split $text "\n"] {
             if {[regexp {^/(\S+)\s*(.*)} $text -> cmd text]} {
-                docmd [serverpart $::active] [string toupper $cmd] $text
+                hook call docmd [serverpart $::active] [string toupper $cmd] $text
             } elseif {$text ne ""} {
                 if {[channelpart $::active] eq ""} {
                     addchantext $::active "This isn't a channel." -tags system
                 } else {
-                    hook call cmdMSG [serverpart $::active] "[channelpart $::active] $text"
+                    hook call docmd [serverpart $::active] "MSG" "[channelpart $::active] $text"
                     .t yview end
                 }
             }
         }
+    }
+
+    proc returnkey {} {
+        set text  [.cmd get 1.0 {end - 1 char}]
+        hook call userinput $text
+        dict set ::channelinfo $::active cmdhistory [concat [list $text] [dict get $::channelinfo $::active cmdhistory]]
         .cmd delete 1.0 end
         return -code break
     }
