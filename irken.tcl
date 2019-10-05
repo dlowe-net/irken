@@ -72,7 +72,7 @@ namespace eval ::irken {
         # ::channelinfo is a dict keyed on chanid containing topic, user list, input history, place in the history index.
         # ::active is the chanid of the shown channel.
         # ::seennicks a list of chanid nicks that we have seen since the last presence check
-        lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active ::seennicks
+        lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active ::seennicks ::ctcppings
     }
 
     proc server {serverid args} {dict set ::config $serverid $args}
@@ -895,12 +895,13 @@ namespace eval ::irken {
         return -code continue [list $serverid $msg]
     }
     hook handlePRIVMSG irken 50 {serverid msg} {
+        set chanid [chanid $serverid [dict get $msg chan]]
+        ensurechan $chanid [dict get $msg chan] {}
         if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [dict get $msg trailing] -> cmd text]} {
-            hook call ctcp$cmd $serverid $msg $text
+            hook call ctcp$cmd $chanid $msg $text
             return -code break
         }
-        ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
-        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg trailing]" -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
+        addchantext $chanid [dict get $msg trailing] -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
     }
     hook handleQUIT irken 50 {serverid msg} {
         foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
@@ -935,37 +936,50 @@ namespace eval ::irken {
         addchantext $serverid "[dict get $msg line]" -tags system
     }
 
-    hook ctcpACTION irken 50 {serverid msg text} {
-        ensurechan [chanid $serverid [dict get $msg chan]] [dict get $msg chan] {}
-        addchantext [chanid $serverid [dict get $msg chan]] "[dict get $msg src] $text" -time [dict get $msg time] -tags [dict get? {} $msg tag]
-    }
-    hook ctcpCLIENTINFO irken 50 {serverid msg text} {
-        if {$text eq ""} {
-            addchantext $serverid "CTCP CLIENTINFO request from [dict get $msg src]" -tags system
-            send $serverid "NOTICE [dict get $msg src] :\001CLIENTINFO ACTION CLIENTINFO PING TIME VERSION\001"
-        } else {
-            addchantext $serverid "CTCP CLIENTINFO reply from [dict get $msg src]: $text" -tags system
+    proc ctcpreply {chanid msg cmd text} {
+        if {[dict get $msg cmd] ne "NOTICE"} {
+            return 0
         }
+        addchantext $chanid "CTCP $cmd reply: $text" -time [dict get $msg time] -tags system
+        return 1
     }
-    hook ctcpPING irken 50 {serverid msg text} {
-        addchantext $serverid "CTCP PING request from [dict get $msg src]: $text" -tags system
-        send $serverid "NOTICE [dict get $msg src] :\001PING $text\001"
+
+    hook ctcpACTION irken 50 {chanid msg text} {
+        addchantext $chanid "[dict get $msg src] $text" -time [dict get $msg time] -tags [dict get? {} $msg tag]
     }
-    hook ctcpTIME irken 50 {serverid msg text} {
-        if {$text eq ""} {
-            addchantext $serverid "CTCP TIME request from [dict get $msg src]" -tags system
-            send $serverid "NOTICE [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
-        } else {
-            addchantext $serverid "CTCP TIME reply from [dict get $msg src]: $text" -tags system
+    hook ctcpCLIENTINFO irken 50 {chanid msg text} {
+        if {[ctcpreply $chanid $msg "CLIENTINFO" $text]} {
+            return -code break
         }
+        addchantext $chanid "CTCP CLIENTINFO request" -time [dict get $msg time] -tags system
+        send [serverpart $chanid] "NOTICE [dict get $msg src] :\001ACTION CLIENTINFO PING TIME VERSION\001"
     }
-    hook ctcpVERSION irken 50 {serverid msg text} {
-        if {$text eq ""} {
-            addchantext $serverid "CTCP VERSION request from [dict get $msg src]" -tags system
-            send $serverid "NOTICE [dict get $msg src] :\001VERSION Irken 1.0 <https://github.com/dlowe-net/irken>\001"
-        } else {
-            addchantext $serverid "CTCP VERSION reply from [dict get $msg src]: $text" -tags system
+    hook ctcpPING irken 50 {chanid msg text} {
+        if {[dict get $msg cmd] eq "NOTICE"} {
+            if {[dict exists $::ctcppings "[dict get $msg src]-$text"]} {
+                set rtt [expr {[clock milliseconds] - [dict get $::ctcppings "[dict get $msg src]-$text"]}]
+                addchantext $chanid "CTCP PING reply: $text (${rtt}ms)" -time [dict get $msg time] -tags system
+            } else {
+                addchantext $chanid "CTCP PING reply: $text" -time [dict get $msg time] -tags system
+            }
+            return -code break
         }
+        addchantext $chanid "CTCP PING request: $text" -time [dict get $msg time] -tags system
+        send [serverpart $chanid] "NOTICE [dict get $msg src] :\001PING $text\001"
+    }
+    hook ctcpTIME irken 50 {chanid msg text} {
+        if {[ctcpreply $chanid $msg "TIME" $text]} {
+            return -code break
+        }
+        addchantext $chanid "CTCP TIME request" -time [dict get $msg time] -tags system
+        send [serverpart $chanid] "NOTICE [dict get $msg src] :\001TIME [clock format [clock seconds] -gmt 1]\001"
+    }
+    hook ctcpVERSION irken 50 {chanid msg text} {
+        if {[ctcpreply $chanid $msg "VERSION" $text]} {
+            return -code break
+        }
+        addchantext $chanid "CTCP VERSION request" -time [dict get $msg time] -tags system
+        send [serverpart $chanid] "NOTICE [dict get $msg src] :\001VERSION Irken 1.0\001"
     }
 
     proc parseline {line} {
@@ -1009,15 +1023,32 @@ namespace eval ::irken {
         removechan $chanid
     }
     hook cmdEVAL irken 50 {serverid arg} {
-        addchantext $::active "$arg -> [namespace eval ::irken $arg]" -tags system
+        addchantext $::active "$arg -> [namespace eval :: $arg]" -tags system
+    }
+    hook cmdCTCP irken 50 {serverid arg} {
+        if {![regexp {^(\S+) +(\S+) *(.*)} $arg -> target cmd arg]} {
+            addchantext $::active "Usage: /CTCP <target> <cmd> [<message>]" -tags system
+            return -code break
+        }
+        set cmd [string toupper $cmd]
+        if {$cmd eq "PING"} {
+            if {$arg eq ""} {set arg [clock milliseconds]}
+            dict set ::ctcppings "$target-$arg" [clock milliseconds]
+        }
+        if {$arg ne ""} {set arg [string cat " " $arg]}
+        if {$cmd eq "ACTION"} {
+            addchantext $::active "[dict get $::serverinfo $serverid nick]$arg" -tags self
+        } else {
+            addchantext $::active "sent CTCP $cmd$arg" -tags {self system}
+        }
+        send $serverid "PRIVMSG $target :\001$cmd$arg\001"
     }
     hook cmdME irken 50 {serverid arg} {
         if {[channelpart $::active] eq ""} {
             addchantext $::active "This isn't a channel." -tags system
             return
         }
-        send $serverid "PRIVMSG [channelpart $::active] :\001ACTION $arg\001"
-        addchantext $::active "[dict get $::serverinfo $serverid nick] $arg" -tags self
+        hook call cmdCTCP $serverid "[channelpart $::active] ACTION $arg"
     }
     hook cmdJOIN irken 50 {serverid arg} {
         set chanid [chanid $serverid $arg]

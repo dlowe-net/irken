@@ -25,21 +25,21 @@ namespace eval ijchain {
         send $serverid "PRIVMSG $botnick :names"
     }
 
-    hook ctcpACTION ijchain 30 {serverid msg text} {
+    hook ctcpACTION ijchain 30 {chanid msg text} {
         variable botnick
         if {[dict get $msg src] ne $botnick} {
             return
         }
         if {[regexp -- {^(\S+) has become available} $text -> nick]} {
-            hook call handleJOIN $serverid [dict replace $msg src [decoratenick $nick]]
+            hook call handleJOIN [irken::serverpart $chanid] [dict replace $msg src [decoratenick $nick]]
             return -code break
         }
         if {[regexp -- {^(\S+) has left} $text -> nick]} {
-            hook call handlePART $serverid [dict replace $msg src [decoratenick $nick] args [lrange [dict get $msg args] 0 0] trailing {}]
+            hook call handlePART [irken::serverpart $chanid] [dict replace $msg src [decoratenick $nick] args [lrange [dict get $msg args] 0 0] trailing {}]
             return -code break
         }
         if {[regexp -- {^(\S+) (.*)} $text  -> nick text]} {
-            return -code continue [list $serverid [dict replace $msg src [decoratenick $nick]] $text]
+            return -code continue [list $chanid [dict replace $msg src [decoratenick $nick]] $text]
         }
     }
 
