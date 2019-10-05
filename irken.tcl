@@ -95,6 +95,16 @@ namespace eval ::irken {
     }
 
     hook openhlink irken 50 {hlink} {exec -ignorestderr -- xdg-open $hlink &}
+    hook textpopup nanoirc 99 {x y rootx rooty} {
+        .t.popup entryconfigure "Copy" -state [expr {([.t tag ranges sel] eq "") ? "disabled":"normal"}]
+        tk_popup .t.popup $rootx $rooty
+    }
+
+    proc copytext {} {
+        if {[set r [.t tag nextrange sel 0.0]] ne ""} {
+            clipboard clear; clipboard append [.t get {*}$r]
+        }
+    }
 
     proc initui {} {
         catch {font create Irken.FixedItalic {*}[font actual Irken.Fixed] -slant italic}
@@ -140,6 +150,9 @@ namespace eval ::irken {
         .t tag bind hlink <ButtonRelease-1> [namespace code {hook call openhlink [%W get {*}[%W tag prevrange hlink @%x,%y]]}]
         .t tag bind hlink <Enter> {%W configure -cursor hand2}
         .t tag bind hlink <Leave> {%W configure -cursor xterm}
+        menu .t.popup -tearoff 0
+        .t.popup add command -label "Copy" -command [namespace code {copytext}]
+        bind .t <ButtonPress-3> [namespace code {hook call textpopup %x %y %X %Y}]
         ttk::frame .cmdline
         ttk::label .nick -padding 3
         text .cmd -height 1 -wrap none -font Irken.Fixed
