@@ -116,6 +116,8 @@ in the freenode #tcl channel.
   and users.
 * `restorewinpos` - Keeps track of your window position and opens it at the same
 place on startup.
+* `reconnect` - Automatically reconnects to servers when they
+  disconnect.
 * `rot13` - Add popup menu command for decoding rot13 and a /rot13 command.
 * `search` - Adds /search <pattern> command which outputs matching lines to
   a new window.

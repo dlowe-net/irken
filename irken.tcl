@@ -649,6 +649,7 @@ namespace eval ::irken {
         if {[set err [chan configure $chan -error]] ne ""} {
             close $chan
             addchantext $serverid "Connection failure: $err" -tags system
+            hook call disconnection $serverid
             return
         }
         chan configure $chan -blocking 0 -buffering line
