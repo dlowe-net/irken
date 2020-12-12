@@ -163,7 +163,7 @@ namespace eval ::chanlist {
         variable lastquery
         variable channels
         
-        .chanlist.chans.tv delete [dict keys $channels]
+        .chanlist.chans.tv delete [.chanlist.chans.tv children {}]
         set channels {}
         irc::send $lastserverid [string cat "LIST " {*}$lastquery]
         .chanlist.info configure -text "Retrieving channels..."
