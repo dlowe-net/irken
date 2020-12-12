@@ -656,6 +656,7 @@ namespace eval ::irken {
         fileevent $chan writable {}
         fileevent $chan readable [namespace code [list recv $chan]]
         .nav tag remove disabled [concat [list $serverid] [.nav children $serverid]]
+        hook call connected $serverid
         addchantext $serverid "Connected." -tags system
         send $serverid "CAP REQ :multi-prefix\nCAP REQ :znc.in/server-time-iso\nCAP REQ :server-time\nCAP END"
         if {[dict exists $::config $serverid -pass]} {

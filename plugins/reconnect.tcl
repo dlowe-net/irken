@@ -22,6 +22,6 @@ namespace eval reconnect {
         set capped [expr {min(10, $fails)}]
         set wait [expr {int(100 * (pow(2.0, $capped) + rand()))}]
         irken::addchantext $serverid [format "Reconnecting in %.2f seconds (attempt %d)..." [expr {$wait / 1000.0}] $fails] -tags system
-        after $wait [namespace code "irken::connect \"$serverid\""]
+        after $wait [list ::irken::connect $serverid]
     }
 }
