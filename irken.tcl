@@ -1071,6 +1071,9 @@ namespace eval ::irken {
         .nav selection set $chanid
         send $serverid "JOIN :$arg"
     }
+    hook cmdQUIT irken 50 {serverid arg} {
+        send $serverid "QUIT :$arg"
+    }
     hook cmdMSG irken 50 {serverid arg} {
         if {[regexp -- {^(\S+) (.*)$} $arg -> target text]} {
             foreach line [split $text "\n"] {
