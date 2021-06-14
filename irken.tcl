@@ -228,6 +228,14 @@ namespace eval ::irken {
     }
     proc usercmp {serverid a b} {return [ircstrcmp [dict get $::serverinfo $serverid casemapping] [rankeduser $serverid $a] [rankeduser $serverid $b]]}
     proc isself {serverid nick} {return [irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid nick] $nick]}
+    proc isserver {serverid nick} {
+        if [dict exists $::serverinfo $serverid servername] {
+            if {[irceq [dict get $::serverinfo $serverid casemapping] [dict get $::serverinfo $serverid servername] $nick]} {
+                return true
+            }
+        }
+        return [expr {$nick == "*"}]
+    }
 
     proc setchantopic {chanid text} {
         dict set ::channelinfo $chanid topic $text
@@ -675,6 +683,7 @@ namespace eval ::irken {
     }
 
     hook handle001 irken 50 {serverid msg} {
+        dict set ::serverinfo $serverid servername [dict get $msg src]
         foreach chan [dict get? {} $::config $serverid -autojoin] {
             ensurechan [chanid $serverid $chan] "" disabled
             send $serverid "JOIN $chan"
@@ -910,8 +919,12 @@ namespace eval ::irken {
         return -code continue [list $serverid $msg]
     }
     hook handlePRIVMSG irken 50 {serverid msg} {
-        set chanid [chanid $serverid [dict get $msg chan]]
-        ensurechan $chanid [dict get $msg chan] {}
+        if {[isserver $serverid [dict get $msg chan]]} {
+            set chanid $serverid
+        } else {
+            set chanid [chanid $serverid [dict get $msg chan]]
+            ensurechan $chanid [dict get $msg chan] {}
+        }
         if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [dict get $msg trailing] -> cmd text]} {
             hook call ctcp$cmd $chanid $msg $text
             return -code break
