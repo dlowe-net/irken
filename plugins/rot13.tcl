@@ -5,7 +5,7 @@
 #   Adds a popup menu that rot13s a selection in the main text area.
 #
 
-namespace eval rot13 {
+namespace eval ::irken::rot13 {
     namespace import ::irken::*
 
     hook setupui rot13 50 {} {

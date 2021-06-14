@@ -14,7 +14,7 @@
 #   /ALIAS <cmd> <cmd>[;<cmd>...] - add an alias
 #   /UNALIAS <cmd> - remove alias
 
-namespace eval aliases {
+namespace eval ::irken::aliases {
     namespace import ::irken::*
     
     variable confpath "~/.config/irken/aliases.conf"

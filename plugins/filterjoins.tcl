@@ -8,7 +8,7 @@
 #
 # Set filterjoinslimit to specify the number of minutes that qualifies
 # as recent
-namespace eval filterjoins {
+namespace eval ::irken::filterjoins {
     namespace import ::irken::*
     variable recentlimit 30
     variable lastspoke {}

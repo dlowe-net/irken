@@ -5,7 +5,7 @@
 #   Adds popup menus for operations on servers, channels, and users.
 #
 
-namespace eval popupmenus {
+namespace eval ::irken::popupmenus {
     namespace import ::irken::*
 
     variable target {}

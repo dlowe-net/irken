@@ -6,7 +6,7 @@
 #   or privmsg is received.
 #
 
-namespace eval dtnotify {
+namespace eval ::irken::dtnotify {
     namespace import ::irken::*
     variable sendcmd "/usr/bin/notify-send"
     variable ignore {}

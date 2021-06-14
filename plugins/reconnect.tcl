@@ -6,7 +6,7 @@
 # limited exponential falloff plus jitter on failure.
 #
 
-namespace eval reconnect {
+namespace eval ::irken::reconnect {
     namespace import ::irken::*
     variable failures {}
 

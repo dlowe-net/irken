@@ -8,7 +8,7 @@
 #     /UNIGNORE <nick> Remove nick from ignore list
 #
 
-namespace eval ignore {
+namespace eval ::irken::ignore {
     variable ignorelist {}
     variable confpath "~/.config/irken/ignore.conf"
 

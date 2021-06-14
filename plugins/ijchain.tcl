@@ -7,7 +7,7 @@
 #   through the bots appear as if they are occurring in the IRC
 #   channel.
 
-namespace eval ijchain {
+namespace eval ::irken::ijchain {
     namespace import ::irc::* ::irken::*
     variable bots {ijchain ischain}
 

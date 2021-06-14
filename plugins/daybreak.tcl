@@ -6,7 +6,7 @@
 #   disambiguate timestamps which do not include the date.
 #
 
-namespace eval daybreak {
+namespace eval ::irken::daybreak {
     namespace import ::irken::*
 
     proc timeuntilmidnight {} {

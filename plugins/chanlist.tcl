@@ -6,7 +6,7 @@
 #   a new window.
 #
 
-namespace eval ::chanlist {
+namespace eval ::irken::chanlist {
     namespace import ::irken::*
 
     variable uparrow [image create photo -format png -data "iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAAALUlEQVQY02NgwAJERUX/YxNnxKfw9evXjDgVYzMRWQMjIauRNTASUojLSaMAAGohEUMw+q6EAAAAAElFTkSuQmCC"]

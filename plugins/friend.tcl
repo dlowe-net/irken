@@ -11,7 +11,7 @@
 #   /FRIEND <nick> ... - Add nick as friend.
 #   /UNFRIEND <nick> ... - Removes nick from friend list.
 
-namespace eval ::friend {
+namespace eval ::irken::friend {
     namespace import ::irc::* ::irken::*
     # Friends are stored as dicts<server id, list<nicks>>
     variable friends [dict create]

@@ -5,7 +5,7 @@
 # Adds commands:
 #   /search <regex> ... - Search buffer for regex
 
-namespace eval ::search {
+namespace eval ::irken::search {
     namespace import ::irc::* ::irken::*
 
     hook cmdSEARCH search 50 {serverid arg} {
