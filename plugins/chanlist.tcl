@@ -179,13 +179,13 @@ namespace eval ::irken::chanlist {
         # construct rest of window
         ttk::frame .chanlist.filter
         ttk::label .chanlist.filter.textl -text "Regex: "
-        ttk::entry .chanlist.filter.text -textvariable chanlist::filtertext
+        ttk::entry .chanlist.filter.text -textvariable ::irken::chanlist::filtertext
         trace add variable filtertext write [namespace code {filtertextchanged}]
-        ttk::checkbutton .chanlist.filter.usemin -variable chanlist::usemin -command [namespace code {updatechanlist}] -text "Min: "
-        ttk::spinbox .chanlist.filter.min -from 1 -to 9999 -width 4 -state disabled -validate key -validatecommand [namespace code {numbersonly %P}] -textvariable chanlist::filtermin
+        ttk::checkbutton .chanlist.filter.usemin -variable ::irken::chanlist::usemin -command [namespace code {updatechanlist}] -text "Min: "
+        ttk::spinbox .chanlist.filter.min -from 1 -to 9999 -width 4 -state disabled -validate key -validatecommand [namespace code {numbersonly %P}] -textvariable ::irken::chanlist::filtermin
         .chanlist.filter.min set 1
-        ttk::checkbutton .chanlist.filter.usemax -variable chanlist::usemax -command [namespace code {updatechanlist}] -text "Max: "
-        ttk::spinbox .chanlist.filter.max -from 1 -to 9999 -width 4 -state disabled -validate key -validatecommand [namespace code {numbersonly %P}] -textvariable chanlist::filtermax
+        ttk::checkbutton .chanlist.filter.usemax -variable ::irken::chanlist::usemax -command [namespace code {updatechanlist}] -text "Max: "
+        ttk::spinbox .chanlist.filter.max -from 1 -to 9999 -width 4 -state disabled -validate key -validatecommand [namespace code {numbersonly %P}] -textvariable ::irken::chanlist::filtermax
         .chanlist.filter.max set 9999
         bind .chanlist.filter.min <Return> [namespace code updatechanlist]
         bind .chanlist.filter.max <Return> [namespace code updatechanlist]
