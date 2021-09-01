@@ -1018,7 +1018,12 @@ namespace eval ::irken {
         if {$trailing ne ""} {lappend args $trailing}
         # Numeric responses specify a useless target afterwards
         if {[regexp {^\d+$} $cmd]} {set args [lrange $args 1 end]}
-        set msg [dict create tags [concat {*}[lmap t [split $tags ","] {split $t "="}]] src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
+        set msg [dict create tags [concat {*}[lmap t [split $tags ";"] {split $t "="}]] src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
+        dict for {k v} [dict get $msg tags] {
+            # escaped non-special characters unescape to themselves
+            regsub -all {\\([^; rn\\]} v "\\1" v
+            dict set msg tags $k [string map {\\: ";" \\s " " \\r "\r" \\n "\n" \\\\ "\\"} v]
+        }
         if {[dict exists $msg tags time]} {
             dict set msg time [clock scan [regsub {^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(?:\.\d+)?} [dict get $msg tags time] {\1\2\3T\4\5\6}]]
         } else {
