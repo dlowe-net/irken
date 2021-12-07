@@ -419,7 +419,7 @@ namespace eval ::irken {
                 }
                 "\x03" {
                     set rest [string range $rest 1 end]
-                    if {[regexp -- {^0*(\d\d?)(,0*(\d\d?))?} $rest match fgnum _ bgnum]} {
+                    if {[regexp -- {^0?(\d\d?)(,0?(\d\d?))?} $rest match fgnum _ bgnum]} {
                         set rest [string range $rest [string length $match] end]
                         if {$reverse} {
                             lassign [list $bgnum $fgnum] fgnum bgnum
@@ -427,6 +427,11 @@ namespace eval ::irken {
                         lassign [tagcolorchange $pos "fg" "black" $fg [dict get? "black" $::codetagcolormap $fgnum]] newtags fg
                         lappend tagranges {*}$newtags
                         lassign [tagcolorchange $pos "bg" "white" $bg [dict get? "white" $::codetagcolormap $bgnum]] newtags bg
+                        lappend tagranges {*}$newtags
+                    } else {
+                        lassign [tagcolorchange $pos "fg" "black" $fg "black"] newtags fg
+                        lappend tagranges {*}$newtags
+                        lassign [tagcolorchange $pos "bg" "white" $bg "white"] newtags bg
                         lappend tagranges {*}$newtags
                     }
                     continue

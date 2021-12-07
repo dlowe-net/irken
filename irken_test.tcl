@@ -154,9 +154,8 @@ test colorcode {} {
     asserteq [irken::colorcode "\x1dnormal \x1dtext"] [list "normal text" {{0 push italic} {7 pop italic}}]
     asserteq [irken::colorcode "\x1fnormal \x1ftext"] [list "normal text" {{0 push underline} {7 pop underline}}]
     asserteq [irken::colorcode "\x034rainbow \x03text"] [list "rainbow text" {{0 push fg_red} {8 pop fg_red}}]
-    asserteq [irken::colorcode "\x034,5rainbow \x034,text"] [list "rainbow text" {{0 push fg_red} {0 push bg_maroon} {8 pop bg_maroon}}]
-    asserteq [irken::colorcode "\x034,5rainbow \x03,text"] [list "rainbow text" {{0 push fg_red} {0 push bg_maroon} {8 pop fg_red} {8 pop bg_maroon}}]
-    # sometimes colors are sent with leading zeros :(
+    asserteq [irken::colorcode "\x034,5rainbow \x034,99text"] [list "rainbow text" {{0 push fg_red} {0 push bg_maroon} {8 pop bg_maroon}}]
+    asserteq [irken::colorcode "\x0314,15rainbow \x03text"] [list "rainbow text" {{0 push fg_gray} {0 push bg_lgray} {8 pop fg_gray} {8 pop bg_lgray}}]
     asserteq [irken::colorcode "\x0304rainbow \x03text"] [list "rainbow text" {{0 push fg_red} {8 pop fg_red}}]
     asserteq [irken::colorcode "\x02bold\x02 normal \x02\x1dbold italic\x02 italic \x02bold italic\x1d bold"] \
         [list "bold normal bold italic italic bold italic bold" \
