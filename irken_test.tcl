@@ -218,6 +218,9 @@ test parseline {} {
     set msg [irken::parseline ":irc.example.com 353 nick = #foo :one two three four"]
     asserteq [dict get $msg cmd] "353"
     asserteq [dict get $msg args] [list "=" "#foo" "one two three four"]
+    set msg [irken::parseline "@time=20211207T04:20:00Z :irc.example.com 353 nick = #foo :one two three four"]
+    asserteq [dict get $msg cmd] "353"
+    asserteq [dict get $msg args] [list "=" "#foo" "one two three four"]
 }
 
 test addchantext {irken_fixture} {
