@@ -14,7 +14,7 @@ namespace eval ::irken::debug {
         addchantext $::active "*" $text {}
     }
 
-    set enabled false
+    set enabled true
 
     if {$enabled} {
         hook setupui debug 50 {} {
@@ -35,7 +35,7 @@ namespace eval ::irken::debug {
             }
             .debug.t configure -state disabled
         }
-        
+
         namespace eval ::irc {
             namespace export send
             proc send {serverid str} {
@@ -49,7 +49,7 @@ namespace eval ::irken::debug {
                 flush $chan
             }
         }
-        
+
         namespace eval ::irken {
             proc recv {chan} {
                 if {[catch {gets $chan line} len] || [eof $chan]} {

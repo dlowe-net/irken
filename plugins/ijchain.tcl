@@ -79,7 +79,7 @@ namespace eval ::irken::ijchain {
             lappend names [decoratenick $bot $nick]
         }
         hook call handle353 $serverid \
-            [dict create args [list "*" "#tcl"] trailing $names]
+            [dict create args [list "ignore" "*" "#tcl"] trailing $names]
 
         # Don't display this message
         return -code break

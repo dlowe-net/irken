@@ -689,13 +689,15 @@ namespace eval ::irken {
 
     hook handle001 irken 50 {serverid msg} {
         dict set ::serverinfo $serverid servername [dict get $msg src]
+        dict set ::serverinfo $serverid nick [lindex [dict get $msg args] 0]
+        .nick configure -text [lindex [dict get $msg args] 0]
         foreach chan [dict get? {} $::config $serverid -autojoin] {
             ensurechan [chanid $serverid $chan] "" disabled
             send $serverid "JOIN $chan"
         }
     }
     hook handle005 irken 50 {serverid msg} {
-        foreach param [dict get $msg args] {
+        foreach param [lrange [dict get $msg args] 1 end] {
             lassign [split $param "="] key val
             if {[lsearch -exact {CASEMAPPING CHANTYPES CHANNELLEN PREFIX} $key] != -1} {
                 switch -- $key {
@@ -715,7 +717,7 @@ namespace eval ::irken {
         addchantext [chanid $serverid $nick] "$nick is away: $awaymsg" -tags system
     }
     hook handle303 irken 50 {serverid msg} {
-        foreach nick [split [lindex [dict get $msg args] 0] " "] {
+        foreach nick [split [lindex [dict get $msg args] 1] " "] {
             set chanid [chanid $serverid $nick]
             if {[.nav exists $chanid]} {
                 ensurechan $chanid $nick {}
@@ -733,16 +735,16 @@ namespace eval ::irken {
         addchantext $::active "You have been marked as being away." -tags system
     }
     hook handle328 irken 50 {serverid msg} {
-        lassign [dict get $msg args] chan url
+        lassign [dict get $msg args] target chan url
         addchantext [chanid $serverid $chan] "Channel URL is $url." -tags system
     }
     hook handle331 irken 50 {serverid msg} {
-        set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
+        set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
         setchantopic $chanid ""
         addchantext $chanid "No channel topic set." -tags system
     }
     hook handle332 irken 50 {serverid msg} {
-        lassign [dict get $msg args] chan topic
+        lassign [dict get $msg args] target chan topic
         set chanid [chanid $serverid $chan]
         ensurechan $chanid $chan {}
         setchantopic $chanid $topic
@@ -753,17 +755,17 @@ namespace eval ::irken {
         }
     }
     hook handle333 irken 50 {serverid msg} {
-        set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-        set nick [lindex [dict get $msg args] 1]
-        if {[llength [dict get $msg args]] == 2} {
-            set time [lindex [dict get $msg args] 2]
+        set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
+        set nick [lindex [dict get $msg args] 2]
+        if {[llength [dict get $msg args]] == 3} {
+            set time [lindex [dict get $msg args] 3]
             addchantext $chanid "Topic set by $nick at [clock format $time]." -tags system
         } else {
             addchantext $chanid "Topic set by $nick." -tags system
         }
     }
     hook handle353 irken 50 {serverid msg} {
-        set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
+        set chanid [chanid $serverid [lindex [dict get $msg args] 2]]
         foreach user [split [dict get $msg trailing] " "] {
             addchanuser $chanid $user {}
         }
@@ -1021,8 +1023,6 @@ namespace eval ::irken {
         }
         set args [split [string trimright $args] " "]
         if {$trailing ne ""} {lappend args $trailing}
-        # Numeric responses specify a useless target afterwards
-        if {[regexp {^\d+$} $cmd]} {set args [lrange $args 1 end]}
         set msg [dict create tags [concat {*}[lmap t [split $tags ";"] {split $t "="}]] src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
         dict for {k v} [dict get $msg tags] {
             # escaped non-special characters unescape to themselves

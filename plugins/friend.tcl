@@ -50,7 +50,7 @@ namespace eval ::irken::friend {
     hook setupui friend 50 {} {
         variable confpath
         variable icon
-        
+
         catch {source $confpath}
         .nav tag config friend -foreground blue
         .t tag config friend -foreground blue
@@ -70,7 +70,7 @@ namespace eval ::irken::friend {
         # prefixes after the fact.  Friends get the special ^ prefix
         # (hopefully unused by any server), which acts as a channel mode
         # and orders them at the top of the userlist.
-        foreach param [dict get $msg args] {
+        foreach param [lrange [dict get $msg args] 1 end] {
             lassign [split $param "="] key val
             if {$key eq "PREFIX"} {
                 set newprefix [dict create {*}[linsert [dict get $::serverinfo $serverid prefix] 0 "$" "f"]]
@@ -83,7 +83,7 @@ namespace eval ::irken::friend {
     # RPL_NAMES
     hook handle353 friend 75 {serverid msg} {
         variable friends
-        set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
+        set chanid [chanid $serverid [lindex [dict get $msg args] 2]]
         foreach user [split [dict get $msg trailing] " "] {
             if {[lsearch -exact [dict get? {} $friends $serverid] $user] != -1} {
                 updateusermodes $chanid $user f {}

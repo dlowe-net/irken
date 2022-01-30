@@ -213,13 +213,13 @@ test parseline {} {
     asserteq [dict get $msg args] [list "#foo"]
     set msg [irken::parseline ":irc.example.com 333 nick #foo nick!user@2600::ffff:dddd:eeee:4444 1505726688"]
     asserteq [dict get $msg cmd] "333"
-    asserteq [dict get $msg args] [list "#foo" "nick!user@2600::ffff:dddd:eeee:4444" "1505726688"]
+    asserteq [dict get $msg args] [list "nick" "#foo" "nick!user@2600::ffff:dddd:eeee:4444" "1505726688"]
     set msg [irken::parseline ":irc.example.com 353 nick = #foo :one two three four"]
     asserteq [dict get $msg cmd] "353"
-    asserteq [dict get $msg args] [list "=" "#foo" "one two three four"]
+    asserteq [dict get $msg args] [list "nick" "=" "#foo" "one two three four"]
     set msg [irken::parseline "@time=20211207T04:20:00Z :irc.example.com 353 nick = #foo :one two three four"]
     asserteq [dict get $msg cmd] "353"
-    asserteq [dict get $msg args] [list "=" "#foo" "one two three four"]
+    asserteq [dict get $msg args] [list "nick" "=" "#foo" "one two three four"]
 }
 
 test addchantext {irken_fixture} {

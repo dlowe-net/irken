@@ -22,7 +22,7 @@ namespace eval ::irken::chanlist {
     variable filtertext ""
     variable lastserverid ""
     variable lastquery {}
-    
+
     proc updatechanlist {} {
         variable usemin
         variable usemax
@@ -134,7 +134,7 @@ namespace eval ::irken::chanlist {
     hook handle321 chanlist 50 {serverid msg} {
         # do nothing with LIST header
     }
-    
+
     hook handle323 chanlist 50 {serverid msg} {
         # do nothing with LIST footer
         updatechanlist
@@ -147,7 +147,7 @@ namespace eval ::irken::chanlist {
             return
         }
         variable channels
-        lassign [dict get $msg args] chan users topic
+        lassign [dict get $msg args] target chan users topic
         set chanid [irken::chanid $serverid $chan]
         set values [list $chan $users $topic]
         if {[.chanlist.chans.tv exists $chanid]} {
@@ -162,7 +162,7 @@ namespace eval ::irken::chanlist {
         variable lastserverid
         variable lastquery
         variable channels
-        
+
         .chanlist.chans.tv delete [.chanlist.chans.tv children {}]
         set channels {}
         irc::send $lastserverid [string cat "LIST " {*}$lastquery]
@@ -173,7 +173,7 @@ namespace eval ::irken::chanlist {
     proc buildlistwindow {} {
         variable filtertext
         variable refreshicon
-        
+
         toplevel .chanlist
         wm iconphoto .chanlist [image create photo -format png -data $::irkenicon]
         # construct rest of window
@@ -191,7 +191,7 @@ namespace eval ::irken::chanlist {
         bind .chanlist.filter.max <Return> [namespace code updatechanlist]
 
         ttk::button .chanlist.filter.refresh -image $refreshicon -command [namespace code {updatelist}]
-        
+
         ttk::frame .chanlist.chans
         ttk::treeview .chanlist.chans.tv -selectmode browse -columns [list chan users topic] -show headings -yscrollcommand {.chanlist.chans.sb set}
         .chanlist.chans.tv heading #1 -text "Name"
@@ -207,7 +207,7 @@ namespace eval ::irken::chanlist {
         bind .chanlist.chans.tv <Double-Button-1> [namespace code {doubleclick %W %x %y}]
 
         ttk::label .chanlist.info -relief sunken -justify right
-        
+
         pack .chanlist.filter -fill x -padx 5 -pady 5
         pack .chanlist.filter.textl -side left
         pack .chanlist.filter.text -fill x -expand 1 -side left
@@ -216,13 +216,13 @@ namespace eval ::irken::chanlist {
         pack .chanlist.filter.usemax -side left -padx 3
         pack .chanlist.filter.max -side left
         pack .chanlist.filter.refresh -side left -padx 5
-        
+
         pack .chanlist.chans -fill both -expand 1
         grid .chanlist.chans.tv .chanlist.chans.sb -sticky nsew
         grid rowconfigure .chanlist.chans .chanlist.chans.tv -weight 1
         grid columnconfigure .chanlist.chans .chanlist.chans.tv -weight 1
         updateheader .chanlist.chans.tv
-        
+
         pack .chanlist.info -fill x
 
         bind .chanlist <Destroy> [namespace code teardownwindow]
@@ -236,7 +236,7 @@ namespace eval ::irken::chanlist {
     hook cmdLIST chanlist 50 {serverid arg} {
         variable lastserverid
         variable lastquery
-        
+
         if {![winfo exists .chanlist]} {
             buildlistwindow
         }
