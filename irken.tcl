@@ -1102,7 +1102,7 @@ namespace eval ::irken {
         set chanid [chanid $serverid $arg]
         ensurechan $chanid "" disabled
         .nav selection set $chanid
-        send $serverid "JOIN :$arg"
+        send $serverid "JOIN $arg"
     }
     hook cmdQUIT irken 50 {serverid arg} {
         send $serverid "QUIT :$arg"
