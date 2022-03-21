@@ -784,7 +784,12 @@ namespace eval ::irken {
     hook handle372 irken 50 {serverid msg} {
         addchantext $serverid "[dict get $msg trailing]" -tags system
     }
-    hook handle376 irken 50 {serverid msg} {return}
+    hook handle376 irken 50 {serverid msg} {
+        hook call ready $serverid
+    }
+    hook handle422 irken 50 {serverid msg} {
+        hook call ready $serverid
+    }
     hook handleJOIN irken 50 {serverid msg} {
         set chan [lindex [dict get $msg args] 0]
         set chanid [chanid $serverid $chan]
