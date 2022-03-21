@@ -671,12 +671,22 @@ namespace eval ::irken {
         .nav tag remove disabled [concat [list $serverid] [.nav children $serverid]]
         hook call connected $serverid
         addchantext $serverid "Connected." -tags system
-        send $serverid "CAP REQ :multi-prefix\nCAP REQ :znc.in/server-time-iso\nCAP REQ :server-time\nCAP END"
+        # IRCv3 states that the client should send a single CAP REQ,
+        # followed by PASS, NICK, and USER, and only then the rest
+        # of the capability negotiations.  Servers seem to be flexible
+        # in this regard, but this does things in the proper order.
+
+        # Note that the client sends multiple CAP REQ requests instead
+        # of one because a) it's doing so blindly and b) the requested
+        # capabilities are rejected as a whole if one of them isn't
+        # present.
+        send $serverid "CAP REQ :multi-prefix"
         if {[dict exists $::config $serverid -pass]} {
             send $serverid "PASS [dict get $::config $serverid -pass]"
         }
         send $serverid "NICK [dict get $::config $serverid -nick]"
         send $serverid "USER [dict get $::config $serverid -user] 0 * :Irken user"
+        send $serverid "CAP REQ :znc.in/server-time-iso\nCAP REQ :server-time\nCAP END"
     }
 
     proc disconnected {chan} {
