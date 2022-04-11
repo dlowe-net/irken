@@ -852,6 +852,12 @@ namespace eval ::irken {
     hook handleNICK irken 50 {serverid msg} {
         set oldnick [dict get $msg src]
         set newnick [lindex [dict get $msg args] 0]
+        if {[isself $serverid $oldnick]} {
+            dict set ::serverinfo $serverid nick $newnick
+            if {[serverpart $::active] eq $serverid} {
+                .nick configure -text $newnick
+            }
+        }
         foreach chanid [dict keys $::channelinfo] {
             if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
                 continue

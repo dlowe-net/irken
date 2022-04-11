@@ -337,6 +337,16 @@ test handleNICKuserselected {irken_fixture} {
     assert {![.nav exists "TestServer/target"]}
 }
 
+test handleNICKself {irken_fixture} {
+    irken::ensurechan [irken::chanid "TestServer" "target"] "target" {}
+    .nav selection set [irken::chanid "TestServer" "target"]
+    irken::selectchan
+    asserteq [.nick cget -text] "test"
+    hook call handleNICK "TestServer" [dict create src "test" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    asserteq [dict get $::serverinfo "TestServer" nick] "other"
+    asserteq [.nick cget -text] "other"
+}
+
 test handleKICKself {irken_fixture} {
     set chanid [irken::chanid "TestServer" "#test"]
     irken::ensurechan $chanid "#test" {}
