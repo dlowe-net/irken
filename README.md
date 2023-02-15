@@ -57,7 +57,11 @@ The server ID must not contain spaces.  The options are these:
 * `-pass` (optional) password for server connection
 * `-insecure` (optional) use an un-encrypted connection if True
 * `-autoconnect` (optional) connect to server on startup if True
-* `-autojoin` (optional) a list of channels to join.  specified like `{"#one" "#two"}`
+* `-autojoin` (optional) a list of channels to join.  Specified like
+  `{"#one" "#two"}`
+* `-services` (optional) a list of nicks that are actually server
+  services.  Messages from these nicks will be displayed in the server
+  tab, not their own.  Specified like `{ChanServ NickServ}`
 
 You may also wish to try some custom fonts, which you can do like this:
 

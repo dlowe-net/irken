@@ -234,7 +234,7 @@ namespace eval ::irken {
                 return true
             }
         }
-        return [expr {$nick == "*"}]
+        return [expr {$nick == "*" || [lsearch -exact [dict get? {} $::config $serverid -services] $nick] != -1}]
     }
 
     proc setchantopic {chanid text} {
