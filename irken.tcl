@@ -305,6 +305,10 @@ namespace eval ::irken {
         }
         updatechaninfo $chanid
         set r -1
+    }
+    proc sortchanusers {chanid} {
+        if {$::active ne $chanid} {return}
+        set users [dict get $::channelinfo $chanid users]
         foreach item [lsort -command "usercmp [serverpart $chanid]" $users] {
             .users move [lindex $item 0] {} [incr r]
         }
@@ -779,6 +783,7 @@ namespace eval ::irken {
         foreach user [split [dict get $msg trailing] " "] {
             addchanuser $chanid $user {}
         }
+        sortchanusers $chanid
     }
     hook handle366 irken 50 {serverid msg} {return}
     hook handle372 irken 50 {serverid msg} {
@@ -795,6 +800,7 @@ namespace eval ::irken {
         set chanid [chanid $serverid $chan]
         ensurechan $chanid $chan {}
         addchanuser $chanid [dict get $msg src] {}
+        sortchanusers $chanid
         if {[isself $serverid [dict get $msg src]]} {
             .nav tag remove disabled $chanid
         }
@@ -868,6 +874,7 @@ namespace eval ::irken {
             }
             remchanuser $chanid $oldnick
             addchanuser $chanid $newnick [lindex $user 1]
+            sortchanusers $chanid
         }
         set oldchanid [chanid $serverid $oldnick]
         set newchanid [chanid $serverid $newnick]
