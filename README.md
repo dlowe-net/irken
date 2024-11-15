@@ -56,6 +56,7 @@ The server ID must not contain spaces.  The options are these:
   false, or 6667 if `-insecure` is true.
 * `-pass` (optional) password for server connection
 * `-insecure` (optional) use an un-encrypted connection if True
+* `-certfile` (optional) path to certificate file to use when connecting to the server (CertFP).
 * `-autoconnect` (optional) connect to server on startup if True
 * `-autojoin` (optional) a list of channels to join.  Specified like
   `{"#one" "#two"}`
