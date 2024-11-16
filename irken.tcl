@@ -652,10 +652,11 @@ namespace eval ::irken {
             return
         }
         set insecure [dict get? 0 $::config $serverid -insecure]
+        set certfile [dict get? "" $::config $serverid -certfile]
         set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
         addchantext $serverid "Connecting to $serverid ($host:$port)..." -tags system
-        set chan [if {$insecure} {socket -async $host $port} {tls::socket -async $host $port}]
+        set chan [if {$insecure} {socket -async $host $port} {tls::socket -certfile $certfile -async $host $port }]
         fileevent $chan writable [namespace code [list connected $chan]]
         dict set ::servers $chan $serverid
         dict set ::serverinfo $serverid [dict merge [dict create chan $chan nick [dict get $::config $serverid -nick]] $::ircdefaults]
