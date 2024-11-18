@@ -658,6 +658,7 @@ namespace eval ::irken {
 
         addchantext $serverid "Connecting to $serverid ($host:$port)..." -tags system
         set chan [if {$insecure} {socket -async $host $port} {tls::socket -certfile $certfile -async $host $port }]
+        fconfigure $chan -translation {auto crlf}
         fileevent $chan writable [namespace code [list connected $chan]]
         dict set ::servers $chan $serverid
         dict set ::serverinfo $serverid [dict merge [dict create chan $chan nick [dict get $::config $serverid -nick]] $::ircdefaults]
