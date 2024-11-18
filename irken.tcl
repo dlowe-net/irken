@@ -325,6 +325,7 @@ namespace eval ::irken {
             foreach addmode $addmodes {.users tag add $addmode $user}
         }
         setchanusers $chanid [lreplace $users $pos $pos [list $user $modes]]
+        sortchanusers $chanid
     }
 
     # users should be {nick modes}
