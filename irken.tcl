@@ -951,7 +951,7 @@ namespace eval ::irken {
         if {[isself $serverid [dict get $msg src]]} {
             dict lappend msg tag "self"
         }
-        if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
+        if {[string first [dict get $::serverinfo $serverid nick] [lindex [dict get $msg args] end]] != -1} {
             dict lappend msg tag "highlight"
         }
         return -code continue [list $serverid $msg]
@@ -963,11 +963,11 @@ namespace eval ::irken {
             set chanid [chanid $serverid [dict get $msg chan]]
             ensurechan $chanid [dict get $msg chan] {}
         }
-        if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [dict get $msg trailing] -> cmd text]} {
+        if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [lindex [dict get $msg args] end] -> cmd text]} {
             hook call ctcp$cmd $chanid $msg $text
             return -code break
         }
-        addchantext $chanid [dict get $msg trailing] -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
+        addchantext $chanid [lindex [dict get $msg args] end] -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
     }
     hook handleQUIT irken 50 {serverid msg} {
         foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
