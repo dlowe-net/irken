@@ -1,4 +1,4 @@
-#!/usr/bin/wish8.6
+#!/usr/bin/env wish8.6
 # Irken - dlowe@dlowe.net
 package require tls
 package require BWidget
