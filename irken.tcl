@@ -207,6 +207,12 @@ namespace eval ::irken {
         }
 
         tls::init -tls1 true -ssl2 false -ssl3 false
+        foreach dir {"/etc/ssl/certs" "/etc/pki/ca-trust"} {
+            if {[file isdirectory $dir]} {
+                dict set ::config cadir $dir
+                break
+            }
+        }
 
         dict for {serverid serverconf} $::config {
             if {[dict get? 0 $serverconf -autoconnect]} {connect $serverid}
@@ -657,7 +663,7 @@ namespace eval ::irken {
         set port [dict get? [expr {$insecure ? 6667:6697}] $::config $serverid -port]
 
         addchantext $serverid "Connecting to $serverid ($host:$port)..." -tags system
-        set chan [if {$insecure} {socket -async $host $port} {tls::socket -certfile $certfile -async $host $port }]
+        set chan [if {$insecure} {socket -async $host $port} {tls::socket -require 1 -cadir [dict get $::config cadir] -certfile $certfile -async $host $port }]
         fconfigure $chan -translation {auto crlf}
         fileevent $chan writable [namespace code [list connected $chan]]
         dict set ::servers $chan $serverid
