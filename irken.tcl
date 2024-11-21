@@ -1156,10 +1156,6 @@ namespace eval ::irken {
         }
         ensurechan [chanid $serverid $arg] "" {}
     }
-    hook cmdRELOAD irken 50 {serverid arg} {
-        namespace eval :: {source $::argv0}
-        addchantext $::active "Irken reloaded." -tags system
-    }
     hook cmdSERVER irken 50 {serverid arg} {
         if {![dict exists $::config $arg]} {
             addchantext $::active "$arg is not a server." -tags system
