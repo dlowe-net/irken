@@ -440,7 +440,7 @@ namespace eval ::irken {
                     lassign [list [expr {!$reverse}] $fg $bg] reverse newbg newfg
                     lassign [tagcolorchange $pos "fg" "black" $fg $newfg] newtags fg
                     lappend tagranges {*}$newtags
-                    lassign [tagcolorchange $pos "bg" "white" $fg $newbg] newtags bg
+                    lassign [tagcolorchange $pos "bg" "white" $bg $newbg] newtags bg
                     lappend tagranges {*}$newtags
                 }
                 default {
