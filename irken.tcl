@@ -20,7 +20,7 @@ proc hook {op name args} {
     switch -- $op {
         "exists" {return [expr {[dict get? "" $::hooks $name] ne ""}]}
         "unset" {
-            dict set ::hooks $name [lsearch -all -exact -inline -not -index 0 [dict get? {} $::hooks $name] [lindex $args 0]]
+            dict set ::hooks $name [lsearch -all -exact -inline -not [dict get? {} $::hooks $name] $name]
             return ""
         }
         "call" {
