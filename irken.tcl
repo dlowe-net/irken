@@ -1121,9 +1121,9 @@ namespace eval ::irken {
     hook cmdMSG irken 50 {serverid arg} {
         if {[regexp -- {^(\S+) (.*)$} $arg -> target text]} {
             foreach line [split $text "\n"] {
-                send $serverid "PRIVMSG $target :$text"
+                send $serverid "PRIVMSG $target :$line"
                 ensurechan [chanid $serverid $target] "" {}
-                addchantext [chanid $serverid $target] "$text" -nick [dict get $::serverinfo $serverid nick] -tags self
+                addchantext [chanid $serverid $target] "$line" -nick [dict get $::serverinfo $serverid nick] -tags self
             }
         } else {
             addchantext $::active "Usage: /MSG <target> <message>" -tags system
