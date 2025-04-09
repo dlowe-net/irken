@@ -978,7 +978,7 @@ namespace eval ::irken {
         set chanid [chanid $serverid [dict get $msg src]]
         if {[.nav exists $chanid]} {
             .nav tag add disabled $chanid
-            addchantext $chanid "[dict get $msg src] has quit$note"
+            addchantext $chanid "[dict get $msg src] has quit$note" -tags system
         }
 
     }
