@@ -1110,9 +1110,8 @@ namespace eval ::irken {
         hook call cmdCTCP $serverid "[channelpart $::active] ACTION $arg"
     }
     hook cmdJOIN irken 50 {serverid arg} {
-        set chanid [chanid $serverid $arg]
-        ensurechan $chanid "" disabled
-        .nav selection set $chanid
+        ensurechan [chanid $serverid $arg] "" disabled
+        .nav selection set [chanid $serverid $arg]
         send $serverid "JOIN $arg"
     }
     hook cmdQUIT irken 50 {serverid arg} {
