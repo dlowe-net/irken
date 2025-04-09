@@ -25,14 +25,17 @@ namespace eval ::irken::ijchain {
 
     hook handleJOIN ijchain 75 {chanid msg} {
         variable bots
-        if {![isself [irken::serverpart $chanid] [dict get $msg src]]} {
-            return
-        }
         if {[lindex [dict get $msg args] 0] ne "#tcl"} {
             return
         }
-        foreach bot $bots {
-            send [irken::serverpart $chanid] "PRIVMSG $bot :names"
+        if {[isself [irken::serverpart $chanid] [dict get $msg src]]} {
+            foreach bot $bots {
+                send [irken::serverpart $chanid] "PRIVMSG $bot :names"
+            }
+            return
+        }
+        if {[dict get $msg src] in $bots} {
+            send [irken::serverpart $chanid] "PRIVMSG [dict get $msg src] :names"
         }
     }
 
