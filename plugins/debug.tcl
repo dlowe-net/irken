@@ -58,7 +58,7 @@ namespace eval ::irken::debug {
         namespace export send
         proc send {serverid str} {
             variable ::irken::debug::enabled
-            if {$enabled} {
+            if {$::irken::debug::enabled} {
                 ::irken::debug::insert output "$serverid <- $str\u21b5\n"
             }
             set chan [dict get $::serverinfo $serverid chan]
@@ -77,7 +77,7 @@ namespace eval ::irken::debug {
             if {[catch {gets $chan line} len] || [eof $chan]} {
                 disconnected $chan
             } elseif {$len != 0 && [set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
-                if {$enabled} {
+                if {$::irken::debug::enabled} {
                     ::irken::debug::insert input "[dict get $::servers $chan] -> $line\u21b5\n"
                 }
                 hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $chan] $msg
