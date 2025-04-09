@@ -767,7 +767,7 @@ namespace eval ::irken {
     hook handle333 irken 50 {serverid msg} {
         set chanid [chanid $serverid [lindex [dict get $msg args] 1]]
         set nick [lindex [dict get $msg args] 2]
-        if {[llength [dict get $msg args]] == 3} {
+        if {[llength [dict get $msg args]] == 4} {
             set time [lindex [dict get $msg args] 3]
             addchantext $chanid "Topic set by $nick at [clock format $time]." -tags system
         } else {
