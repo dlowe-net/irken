@@ -78,7 +78,7 @@ namespace eval ::irken {
     proc server {serverid args} {dict set ::config $serverid $args}
 
     proc loadconfig {} {
-        lassign "$::env(HOME)/.config/irken/" configdir config
+        set configdir "$::env(HOME)/.config/irken/"
         file mkdir $configdir
         if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
             if {[catch {open "$configdir/50irken.tcl" w} fp]} {
