@@ -5,7 +5,7 @@
 #   Restores the position and size of the main window on startup.
 #
 namespace eval ::irken::restorewinpos {
-    variable confpath "~/.config/irken/restorewinpos.conf"
+    variable confpath "$::env(HOME)/.config/irken/restorewinpos.conf"
 
     proc restorewindows {geometry} {
         wm geometry . $geometry
