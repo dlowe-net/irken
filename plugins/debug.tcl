@@ -65,7 +65,7 @@ namespace eval ::irken::debug {
             try {
                 puts $chan $str
             } on error {err} {
-                irken::addchantext $serverid "WRITE ERROR: $err" -tags system
+                ::irken::addchantext $serverid "WRITE ERROR: $err" -tags system
             }
             flush $chan
         }

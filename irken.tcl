@@ -43,7 +43,7 @@ proc hook {op name args} {
 
 namespace eval ::irc {
     namespace export send
-    proc send {serverid str} {set chan [dict get $::serverinfo $serverid chan]; try {puts $chan $str} on error {err} {irken::addchantext $serverid "WRITE ERROR: $err" -tags system};flush $chan}
+    proc send {serverid str} {set chan [dict get $::serverinfo $serverid chan]; try {puts $chan $str} on error {err} {::irken::addchantext $serverid "WRITE ERROR: $err" -tags system};flush $chan}
 }
 
 namespace eval ::irken {
@@ -488,7 +488,7 @@ namespace eval ::irken {
     }
     set httpregexp {https?://[-A-Za-z0-9._~:/?#\[\]@!$%&'()*+,;=]+[-A-Za-z0-9_~:/#\[\]@$%&'()*+=]}
     hook tagchantext irken-http 60 {text ranges} {
-        return -code continue [list $text [concat $ranges [regexranges $text $irken::httpregexp hlink]]]
+        return -code continue [list $text [concat $ranges [regexranges $text $::irken::httpregexp hlink]]]
     }
 
     # addchantext inserts a line of text at the end of a channel's
@@ -1217,4 +1217,4 @@ namespace eval ::irken {
 }
 
 # Start up irken when executed as file
-if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]] && ![info exists ::active]} {irken::irken}
+if {[info exists argv0] && [file dirname [file normalize [info script]/...]] eq [file dirname [file normalize $argv0/...]] && ![info exists ::active]} {::irken::irken}

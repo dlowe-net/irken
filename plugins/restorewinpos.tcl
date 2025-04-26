@@ -17,7 +17,7 @@ namespace eval ::irken::restorewinpos {
             puts $fp "restorewindows \"[wm geometry .]\""
             close $fp
         } else {
-            addchantext $::active "Warning: unable to write to $confpath" -tags {fg_red italic}
+            ::irken::addchantext $::active "Warning: unable to write to $confpath" -tags {fg_red italic}
         }
     }
 
