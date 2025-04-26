@@ -76,7 +76,7 @@ namespace eval ::irken::debug {
             variable ::irken::debug::enabled
             if {[catch {gets $chan line} len] || [eof $chan]} {
                 disconnected $chan
-            } elseif {$len != 0 && [set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
+            } elseif {$len != 0 && [set msg [parseline $line]] ne ""} {
                 if {$::irken::debug::enabled} {
                     ::irken::debug::insert input "[dict get $::servers $chan] -> $line\u21b5\n"
                 }

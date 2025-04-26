@@ -666,7 +666,7 @@ namespace eval ::irken {
             hook call disconnection $serverid
             return
         }
-        chan configure $chan -blocking 0 -buffering line
+        chan configure $chan -blocking 0 -buffering line -encoding iso8859-1
         fileevent $chan writable {}
         fileevent $chan readable [namespace code [list recv $chan]]
         .nav tag remove disabled [concat [list $serverid] [.nav children $serverid]]
@@ -1040,6 +1040,9 @@ namespace eval ::irken {
     }
 
     proc parseline {line} {
+        if {[catch {encoding convertfrom utf-8 $line} line]} {
+            return ""
+        }
         if {![regexp {^(?:@(\S*) )?(?::([^ !]*)(?:!([^ @]*)(?:@([^ ]*))?)?\s+)?(\S+)\s*((?:[^:]\S*(?:\s+|$))*)(?::(.*))?} $line -> tags src user host cmd args trailing]} {
             return ""
         }
@@ -1062,7 +1065,7 @@ namespace eval ::irken {
     proc recv {chan} {
         if {[catch {gets $chan line} len] || [eof $chan]} {
             disconnected $chan
-        } elseif {$len != 0 && [set msg [parseline [string trimright [encoding convertfrom utf-8 $line]]]] ne ""} {
+        } elseif {$len != 0 && [set msg [parseline $line]] ne ""} {
             hook call [expr {[hook exists "handle[dict get $msg cmd]"] ? "handle[dict get $msg cmd]":"handleUnknown"}] [dict get $::servers $chan] $msg
         }
     }
