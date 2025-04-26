@@ -80,7 +80,8 @@ namespace eval ::irken {
     proc loadconfig {} {
         set configdir "$::env(HOME)/.config/irken/"
         file mkdir $configdir
-        if {[catch {glob -directory $configdir "*.tcl"} configpaths]} {
+        set configpaths [glob -nocomplain -directory $configdir "*.tcl"]
+        if {$configpaths eq {}} {
             if {[catch {open "$configdir/50irken.tcl" w} fp]} {
                 puts stderr "Couldn't write default config.  Exiting."
                 exit 1
