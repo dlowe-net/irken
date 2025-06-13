@@ -329,7 +329,7 @@ namespace eval ::irken {
     # users should be {nick modes}
     proc addchanuser {chanid user modes} {
         set prefixes [dict get $::serverinfo [serverpart $chanid] prefix]
-        regexp -- "^(\[[join [dict keys $prefixes] ""]\]*)(.*)" $user -> userprefixes nick
+        regexp -- [string cat "^(\[" [join [dict keys $prefixes] ""] "\]*)(.*)"] $user -> userprefixes nick
         set usermodes [concat $modes [lmap uprefix [split $userprefixes ""] {dict get $prefixes $uprefix}]]
         set users [dict get $::channelinfo $chanid users]
         if {[lsearch -exact -index 0 $users $nick] != -1} {
@@ -673,6 +673,7 @@ namespace eval ::irken {
         fileevent $chan readable [namespace code [list recv $chan]]
         .nav tag remove disabled [concat [list $serverid] [.nav children $serverid]]
         hook call connected $serverid
+        after 60000 [namespace code [list sendping $serverid $chan]]
         addchantext $serverid "Connected." -tags system
         # IRCv3 states that the client should send a single CAP REQ,
         # followed by PASS, NICK, and USER, and only then the rest
@@ -695,11 +696,43 @@ namespace eval ::irken {
     proc disconnected {chan} {
         close $chan
         set serverid [dict get $::servers $chan]
+		dict unset ::servers $chan
         .nav tag add disabled [concat [list $serverid] [.nav children $serverid]]
         addchantext $serverid "Server disconnected." -tags system
         hook call disconnection $serverid
     }
 
+	proc sendping {serverid chan} {
+		if {[dict exists $::servers $chan]} {
+			# Server channel closed
+			return
+		}
+		set now [expr {[clock milliseconds] - $::starttime}]
+		send $serverid "PING :keepalive-$now"
+		after 5000 [namespace code [list expectpong $serverid $chan $now]]
+	}
+
+	proc expectpong {serverid chan lastping} {
+		if {![dict exists $::servers $chan]} {
+			# Server channel closed
+			return
+		}
+		if {[dict get? $lastping ::serverinfo $serverid lastpong] < $lastping} {
+			addchantext $serverid "Server didn't respond to keepalive after 5s." -tags system
+			disconnected $chan
+			return
+		}
+		after 55000 [namespace code [list sendping $serverid $chan]]
+	}
+
+	hook handlePONG irken 50 {serverid msg} {
+		if {[string equal -length 10 "keepalive-" [lindex [dict get $msg args] 1]]} {
+			set now [expr {[clock milliseconds] - $::starttime}]
+			set pingtime [string range [lindex [dict get $msg args] 1] 10 end]
+			dict set ::serverinfo $serverid lastpong $now
+			addchantext $serverid "Lag time: [expr {$now - $pingtime}]" -tags system
+		}
+	}
     hook handle001 irken 50 {serverid msg} {
         dict set ::serverinfo $serverid servername [dict get $msg src]
         dict set ::serverinfo $serverid nick [lindex [dict get $msg args] 0]
