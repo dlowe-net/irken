@@ -156,8 +156,6 @@ dict containing the fields:
 - `host`: hostname of the source
 - `cmd`: command of the message
 - `args`: a list of the arguments for the command
-- `trailing`: IRC has a special argument that comes after a colon (`:`).  This
-  argument is stored here, but is also duplicated as the last argument in args.
 - `line`: the raw line from the server
 
 `cmdCOMMAND` hooks are passed a serverid and the string following the command.

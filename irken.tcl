@@ -812,13 +812,13 @@ namespace eval ::irken {
     }
     hook handle353 irken 50 {serverid msg} {
         set chanid [chanid $serverid [lindex [dict get $msg args] 2]]
-        foreach user [split [dict get $msg trailing] " "] {
+        foreach user [split [lindex [dict get $msg args] 3] " "] {
             addchanuser $chanid $user {}
         }
     }
     hook handle366 irken 50 {serverid msg} {return}
     hook handle372 irken 50 {serverid msg} {
-        addchantext $serverid "[dict get $msg trailing]" -tags system
+        addchantext $serverid [lindex [dict get $msg args] 1] -tags system
     }
     hook handle376 irken 50 {serverid msg} {
         hook call ready $serverid
@@ -852,7 +852,7 @@ namespace eval ::irken {
     hook handleKICK irken-display 75 {serverid msg} {
         lassign [dict get $msg args] chan target note
         set note [expr {$note ne "" ? " ($note)":""}]
-        addchantext [chanid $serverid $chan] "[dict get $msg src] kicks [expr {[isself $serverid $target] ? "you":$target}] from $chan.$note" -tags system
+        addchantext [chanid $serverid $chan] [format "%s kicks %s from %s.%s" [dict get $msg src] [expr {[isself $serverid $target] ? "you":$target}] $chan $note] -tags system
     }
     hook handleMODE irken 50 {serverid msg} {
         set args [lassign [dict get $msg args] target]
@@ -921,7 +921,7 @@ namespace eval ::irken {
     }
     hook handleNICK irken-display 75 {serverid msg} {
         set oldnick [dict get $msg src]
-        set newnick [dict get $msg trailing]
+        set newnick [lindex [dict get $msg args] 0]
         foreach chanid [dict keys $::channelinfo] {
             if {![ischannel $chanid] || [serverpart $chanid] ne $serverid} {
                 return
@@ -977,7 +977,7 @@ namespace eval ::irken {
         if {[isself $serverid [dict get $msg src]]} {
             dict lappend msg tag "self"
         }
-        if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
+        if {[string first [dict get $::serverinfo $serverid nick] [lindex [dict get $msg args] 1]] != -1} {
             dict lappend msg tag "highlight"
         }
         return -code continue [list $serverid $msg]
@@ -989,11 +989,11 @@ namespace eval ::irken {
             set chanid [chanid $serverid [dict get $msg chan]]
             ensurechan $chanid [dict get $msg chan] {}
         }
-        if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [dict get $msg trailing] -> cmd text]} {
+        if {[regexp {^\001([A-Za-z0-9]+) ?(.*?)\001?$} [lindex [dict get $msg args] 1] -> cmd text]} {
             hook call ctcp$cmd $chanid $msg $text
             return -code break
         }
-        addchantext $chanid [dict get $msg trailing] -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
+		addchantext $chanid [lindex [dict get $msg args] 1] -time [dict get $msg time] -nick [dict get $msg src] -tags [dict get? {} $msg tag]
     }
     hook handleQUIT irken 50 {serverid msg} {
         foreach chanid [lsearch -all -inline -glob [dict keys $::channelinfo] "$serverid/*"] {
@@ -1007,7 +1007,7 @@ namespace eval ::irken {
         return -code continue [list $serverid $msg]
     }
     hook handleQUIT irken-display 75 {serverid msg} {
-        set note [expr {[set note [dict get? "" $msg trailing]] eq "" ? "":" ($note)"}]
+        set note [expr {[set note [lindex [dict get $msg args] 0]] eq "" ? "":" ($note)"}]
         foreach chanid [dict get? {} $msg affectedchans] {
             addchantext $chanid "[dict get $msg src] has quit$note" -tags system
         }
@@ -1020,7 +1020,7 @@ namespace eval ::irken {
     }
     hook handleTOPIC irken 50 {serverid msg} {
         set chanid [chanid $serverid [lindex [dict get $msg args] 0]]
-        set topic [dict get $msg trailing]
+        set topic [lindex [dict get $msg args] 1]
         setchantopic $chanid $topic
         addchantext $chanid "[dict get $msg src] sets title to $topic" -tags system
     }

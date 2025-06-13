@@ -73,12 +73,12 @@ namespace eval ::irken::dtnotify {
         }
         if {[isself $serverid [lindex [dict get $msg args] 0]]} {
             # Dtnotify on private message
-            exec -- $sendcmd -c im.received "'Message from [dict get $msg src]'" "'[execescape [dict get $msg trailing]]'"
+            exec -- $sendcmd -c im.received "'Message from [dict get $msg src]'" "'[execescape [lindex [dict get $msg args] 1]]'"
             return
         }
-        if {[string first [dict get $::serverinfo $serverid nick] [dict get $msg trailing]] != -1} {
+        if {[string first [dict get $::serverinfo $serverid nick] [lindex [dict get $msg args] 0]] != -1} {
             # Dtnotify on channel mention
-            exec -- $sendcmd -c im.received "'Mention on [lindex [dict get $msg args] 0]'" "'\\<[dict get $msg src]\\> [execescape [dict get $msg trailing]]'"
+            exec -- $sendcmd -c im.received "'Mention on [lindex [dict get $msg args] 0]'" "'\\<[dict get $msg src]\\> [execescape [lindex [dict get $msg args] 1]]'"
             return
         }
     }

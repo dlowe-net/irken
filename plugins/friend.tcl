@@ -84,7 +84,7 @@ namespace eval ::irken::friend {
     hook handle353 friend 75 {serverid msg} {
         variable friends
         set chanid [chanid $serverid [lindex [dict get $msg args] 2]]
-        foreach user [split [dict get $msg trailing] " "] {
+        foreach user [split [lindex [dict get $msg args] 3] " "] {
             if {[lsearch -exact [dict get? {} $friends $serverid] $user] != -1} {
                 updateusermodes $chanid $user f {}
             }

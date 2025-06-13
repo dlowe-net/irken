@@ -49,7 +49,7 @@ namespace eval ::irken::ijchain {
             return -code break
         }
         if {[regexp -- {^(\S+) has left$} $text -> nick]} {
-            hook call handlePART [irken::serverpart $chanid] [dict replace $msg src [decoratenick $bot $nick] args [lrange [dict get $msg args] 0 0] trailing {}]
+            hook call handlePART [irken::serverpart $chanid] [dict replace $msg src [decoratenick $bot $nick] args [lrange [dict get $msg args] 0 0]]
             return -code break
         }
         if {[regexp -- {^(\S+) (.*)} $text  -> nick text]} {
@@ -64,25 +64,25 @@ namespace eval ::irken::ijchain {
         }
         if {[ischannel [chanid $serverid [lindex [dict get $msg args] 0]]]} {
             # On channel
-            if {[regexp -- {^<([^>]+)> (.*)} [dict get $msg trailing] -> nick text]} {
-                return -code continue [list $serverid [dict replace $msg src [decoratenick $bot $nick] trailing $text]]
-            } elseif {[regexp -- {^(\w+) (.*)} [dict get $msg trailing] -> nick text]} {
-                return -code continue [list $serverid [dict replace $msg src [decoratenick $bot $nick] trailing "\001ACTION $text\001"]]
+            if {[regexp -- {^<([^>]+)> (.*)} [lindex [dict get $msg args] 1] -> nick text]} {
+                return -code continue [list $serverid [dict replace $msg src [decoratenick $bot $nick]]]
+            } elseif {[regexp -- {^(\w+) (.*)} [lindex [dict get $msg args] 1] -> nick text]} {
+                return -code continue [list $serverid [dict replace $msg src [decoratenick $bot $nick]]]
             }
             return
         }
         # Private message
-        if {[regexp -- {^(\S+) whispers (.*)} [dict get $msg trailing] -> nick text]} {
+        if {[regexp -- {^(\S+) whispers (.*)} [lindex [dict get $msg args] 1] -> nick text]} {
             set nick [decoratenick $nick]
-            return -code break [list $serverid [dict replace $msg src $nick args [list $nick $text] trailing $text]]
+            return -code break [list $serverid [dict replace $msg src $nick args [list $nick $text]]]
         }
 
         # Must be the names of correspondents
-        foreach nick [split [dict get $msg trailing] " "] {
+        foreach nick [split [lindex [dict get $msg args] 1] " "] {
             lappend names [decoratenick $bot $nick]
         }
         hook call handle353 $serverid \
-            [dict create args [list "ignore" "*" "#tcl"] trailing $names]
+            [dict create args [list "ignore" "*" "#tcl" $names]]
 
         # Don't display this message
         return -code break

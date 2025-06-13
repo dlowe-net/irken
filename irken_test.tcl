@@ -300,13 +300,13 @@ test closecmdwithuser {irken_fixture} {
 test handleMODE {irken_fixture} {
     irken::addchanuser [irken::chanid "TestServer" "#test"] "@target" {}
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o}]]
-    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" -o target] trailing ""]
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" -o target]]
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {}]]
     assert {[.users exists "target"]}
     assert {![.users tag has o "target"]}
-    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +o target] trailing ""]
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +o target]]
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o}]]
-    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +v target] trailing ""]
+    hook call handleMODE "TestServer" [dict create src "foo" user "foo" host "foo.com" cmd "MODE" args [list "#test" +v target]]
     asserteq [dict get $::channelinfo "TestServer/#test" users] [list [list "target" {o v}]]
 }
 
@@ -315,7 +315,7 @@ test handleNICK {irken_fixture} {
     irken::ensurechan [irken::chanid "TestServer" "target"] "target" {}
     irken::addchantext "TestServer/target" "This is a test."
     set oldtext [dict get $::channeltext "TestServer/target"]
-    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"]]
     assert {[.users exists "other"]}
     assert {![.users exists "target"]}
     asserteq $oldtext [dict get $::channeltext "TestServer/other"]
@@ -330,7 +330,7 @@ test handleNICKuserselected {irken_fixture} {
     .nav selection set [irken::chanid "TestServer" "target"]
     irken::selectchan
     asserteq $::active "TestServer/target"
-    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    hook call handleNICK "TestServer" [dict create src "target" user "foo" host "foo.com" cmd "NICK" args [list "other"]]
     irken::selectchan
     asserteq $::active "TestServer/other"
     assert {[.nav exists "TestServer/other"]}
@@ -342,7 +342,7 @@ test handleNICKself {irken_fixture} {
     .nav selection set [irken::chanid "TestServer" "target"]
     irken::selectchan
     asserteq [.nick cget -text] "test"
-    hook call handleNICK "TestServer" [dict create src "test" user "foo" host "foo.com" cmd "NICK" args [list "other"] trailing ""]
+    hook call handleNICK "TestServer" [dict create src "test" user "foo" host "foo.com" cmd "NICK" args [list "other"]]
     asserteq [dict get $::serverinfo "TestServer" nick] "other"
     asserteq [.nick cget -text] "other"
 }
@@ -352,7 +352,7 @@ test handleKICKself {irken_fixture} {
     irken::ensurechan $chanid "#test" {}
     .nav selection set $chanid
     irken::selectchan
-    hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "test" "get out"] trailing "get out"]
+    hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "test" "get out"]]
     asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks you from #test. (get out)" {system line} "\n" {}]
 }
 
@@ -361,7 +361,7 @@ test handleKICKother {irken_fixture} {
     irken::ensurechan $chanid "#test" {}
     .nav selection set $chanid
     irken::selectchan
-    hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "target" "get out"] trailing "get out"]
+    hook call handleKICK "TestServer" [dict create src "kicker" user "foo" host "foo.com" cmd "KICK" args [list "#test" "target" "get out"]]
     asserteq [lrange [dict get $::channeltext "TestServer/#test"] 2 end] [list "\t*\t" "nick" "kicker kicks target from #test. (get out)" {system line} "\n" {}]
 }
 
