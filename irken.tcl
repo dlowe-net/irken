@@ -73,6 +73,8 @@ namespace eval ::irken {
         # ::active is the chanid of the shown channel.
         # ::seennicks a list of chanid nicks that we have seen since the last presence check
         lassign {} ::config ::servers ::serverinfo ::channeltext ::channelinfo ::active ::seennicks ::ctcppings
+		# ::starttime is used to obfuscate the system time in milliseconds for PINGs
+		set ::starttime [clock milliseconds]
     }
 
     proc server {serverid args} {dict set ::config $serverid $args}
@@ -1014,7 +1016,7 @@ namespace eval ::irken {
     hook ctcpPING irken 50 {chanid msg text} {
         if {[dict get $msg cmd] eq "NOTICE"} {
             if {[dict exists $::ctcppings "[dict get $msg src]-$text"]} {
-                set rtt [expr {[clock milliseconds] - [dict get $::ctcppings "[dict get $msg src]-$text"]}]
+                set rtt [expr {[clock milliseconds] - $::starttime - [dict get $::ctcppings "[dict get $msg src]-$text"]}]
                 addchantext $chanid "CTCP PING reply: $text (${rtt}ms)" -time [dict get $msg time] -tags system
             } else {
                 addchantext $chanid "CTCP PING reply: $text" -time [dict get $msg time] -tags system
@@ -1048,7 +1050,7 @@ namespace eval ::irken {
         }
         set args [split [string trimright $args] " "]
         if {$trailing ne ""} {lappend args $trailing}
-        set msg [dict create tags [concat {*}[lmap t [split $tags ";"] {split $t "="}]] src $src user $user host $host cmd $cmd args $args trailing $trailing line $line]
+        set msg [dict create tags [concat {*}[lmap t [split $tags ";"] {split $t "="}]] src $src user $user host $host cmd $cmd args $args line $line]
         dict for {k v} [dict get $msg tags] {
             # escaped non-special characters unescape to themselves
             regsub -all {\\([^; rn\\])} v "\\1" v
@@ -1095,8 +1097,8 @@ namespace eval ::irken {
         }
         set cmd [string toupper $cmd]
         if {$cmd eq "PING"} {
-            if {$arg eq ""} {set arg [clock milliseconds]}
-            dict set ::ctcppings "$target-$arg" [clock milliseconds]
+            if {$arg eq ""} {set arg [expr {[clock milliseconds] - $::starttime}]}
+            dict set ::ctcppings "$target-$arg" [expr {[clock milliseconds] - $::starttime}]
         }
         if {$arg ne ""} {set arg [string cat " " $arg]}
         if {$cmd eq "ACTION"} {
